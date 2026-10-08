@@ -1,0 +1,12 @@
+# Secrets
+.env
+
+# Data and generated output (CUAD dataset is downloaded separately; OCR cache contains contract text)
+data/
+outputs/
+
+# Python / OS
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
