@@ -17,7 +17,7 @@ import streamlit as st
 from mistralai.client.models import OCRResponse
 from PIL import Image, ImageDraw, ImageFont
 
-from ap import brand, explain, lake, pipeline
+from ap import architecture, brand, explain, lake, pipeline
 from ap.assistant import CHAT_MODEL, SUGGESTIONS, SYSTEM_PROMPT, ask, doc_for_chat, tool_spec
 from ap.config import AS_OF, DATA, DB, MIN_CONFIDENCE, S3_ROOT
 from ap.schema import ANNOTATION_FORMAT, INVOICE_PROMPT
@@ -260,7 +260,12 @@ def action_queue() -> None:
                            "and payments in Iceberg (Impala)."), unsafe_allow_html=True)
     s3.markdown(brand.step(3, "Act", "Together", f"{len(exc)} actions, each linked to the exact spot on the page and "
                            "to the record that triggered it."), unsafe_allow_html=True)
-    st.write("")
+
+    def open_architecture():
+        st.session_state["view"] = "Under the hood"
+        st.session_state["uth_tab"] = "Architecture"
+
+    st.button("See the reference architecture →", type="tertiary", on_click=open_architecture)
 
     k = st.columns(5)
     k[0].metric("Invoices processed", processed)
@@ -424,10 +429,21 @@ def ingest_view() -> None:
 # ---------- 3. Under the hood ----------
 
 
+@st.cache_data
+def architecture_svg() -> str:
+    return architecture.render_svg()
+
+
 def under_the_hood() -> None:
     st.markdown(brand.header("Under the hood", "What OCR 4 returned, where the data lives, and how well it scores."),
                 unsafe_allow_html=True)
-    t_doc, t_lake, t_eval = st.tabs(["One document", "Data lake & rules", "Accuracy"])
+    t_arch, t_doc, t_lake, t_eval = st.tabs(["Architecture", "One document", "Data lake & rules", "Accuracy"], key="uth_tab")
+    with t_arch:
+        st.image(architecture_svg(), width="stretch")  # an image gets Streamlit's full-screen button on hover
+        st.download_button("Download SVG", architecture_svg(), "document-ai-reference-architecture.svg", "image/svg+xml",
+                           type="tertiary")
+        st.markdown("\n".join(f"{i}. {step}" for i, step in enumerate(architecture.STEPS, 1)))
+        st.caption("Product names and logos are trademarks of their respective owners.")
     with t_doc:
         docs = documents()
         docs = docs[docs["status"] == "processed"]
