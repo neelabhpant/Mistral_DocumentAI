@@ -1,32 +1,19 @@
 """Extract text from PDFs with Mistral OCR 4.
 
-Usage:
-  .venv/bin/python ocr_extract.py                 # runs the two default CUAD contracts
-  .venv/bin/python ocr_extract.py a.pdf b.pdf     # any PDFs
+Usage: python ocr_extract.py a.pdf [b.pdf ...]
 
 Outputs go to outputs/ocr/<stem>/<stem>.md (page-joined markdown) and <stem>.json (raw response).
-If a CUAD reference .txt with the same name exists, a rough text-similarity score is printed.
 """
 
 import base64
-import difflib
 import json
-import re
 import sys
 import time
 from pathlib import Path
 
 from test_mistral_api import OCR_MODEL, ROOT, get_client
 
-CUAD = ROOT / "data/cuad/CUAD_v1"
-PDF_DIR = CUAD / "full_contract_pdf"
-TXT_DIR = CUAD / "full_contract_txt"
 OUT_DIR = ROOT / "outputs/ocr"
-
-DEFAULT_PDFS = [
-    PDF_DIR / "Part_I/Distributor/FuseMedicalInc_20190321_10-K_EX-10.43_11575454_EX-10.43_Distributor Agreement.pdf",
-    PDF_DIR / "Part_III/Hosting/GALACTICOMMTECHNOLOGIESINC_11_07_1997-EX-10.46-WEB HOSTING AGREEMENT.PDF",
-]
 
 
 def ocr_bytes(
@@ -76,23 +63,11 @@ def page_markdown(page, inline_images=False) -> str:
     return md
 
 
-def to_plain(text: str) -> str:
-    """Strip markdown syntax and collapse whitespace for a rough comparison."""
-    text = re.sub(r"<!--.*?-->|!\[.*?\]\(.*?\)", " ", text)
-    text = re.sub(r"[#*_|`>]|^-{3,}$|:?-{3,}:?", " ", text, flags=re.M)
-    return " ".join(text.split()).lower()
-
-
-def similarity(ocr_text: str, ref_path: Path) -> float:
-    ref = ref_path.read_text(encoding="utf-8", errors="ignore")
-    # Word-level: about 100x faster than character-level on multi-page contracts.
-    return difflib.SequenceMatcher(None, to_plain(ocr_text).split(), to_plain(ref).split(), autojunk=False).ratio()
-
-
 def main() -> None:
-    pdfs = [Path(p) for p in sys.argv[1:]] or DEFAULT_PDFS
+    pdfs = [Path(p) for p in sys.argv[1:]]
+    if not pdfs:
+        sys.exit(__doc__)
     client = get_client()
-    ref_txts = {p.stem: p for p in TXT_DIR.rglob("*.txt")}
 
     for pdf in pdfs:
         print(f"\n=== {pdf.name}")
@@ -116,8 +91,6 @@ def main() -> None:
         if confs:
             print(f"avg page conf:    {sum(confs) / len(confs):.3f}  (worst page min: {min(min_confs):.3f})")
         print(f"time:             {elapsed:.1f}s")
-        if pdf.stem in ref_txts:
-            print(f"similarity vs CUAD txt: {similarity(markdown, ref_txts[pdf.stem]):.3f}")
         print(f"saved to:         {out.relative_to(ROOT)}/")
 
 

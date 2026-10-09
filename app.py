@@ -1,12 +1,11 @@
-"""Streamlit demo of Mistral OCR 4 on contract PDFs.
+"""Document AI on Cloudera: accounts payable invoices read by Mistral OCR 4, checked against governed
+enterprise data in Iceberg, and turned into a prioritized action queue with click-to-evidence.
 
-Run: .venv/bin/streamlit run app.py
+Run: streamlit run app.py   (on Cloudera AI: launch_app.py)
 """
 
-import hashlib
-import html
-import io
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -18,70 +17,34 @@ import streamlit as st
 from mistralai.client.models import OCRResponse
 from PIL import Image, ImageDraw, ImageFont
 
-from contract_ai import (
-    ANNOTATION_FORMAT,
-    CHAT_MODEL,
-    DEFAULT_PROMPT,
-    SYSTEM_PROMPT,
-    accuracy,
-    annotate,
-    ask,
-    cuad_labels,
-    doc_for_chat,
-    parse_fields,
-    score,
-    tool_spec,
-)
-from ocr_extract import DEFAULT_PDFS, PDF_DIR, TXT_DIR, ROOT, ocr_bytes, page_markdown, similarity
+from ap import brand, explain, lake, pipeline
+from ap.assistant import CHAT_MODEL, SUGGESTIONS, SYSTEM_PROMPT, ask, doc_for_chat, tool_spec
+from ap.config import AS_OF, DATA, DB, MIN_CONFIDENCE, S3_ROOT
+from ap.schema import ANNOTATION_FORMAT, INVOICE_PROMPT
+from ocr_extract import page_markdown
 from test_mistral_api import OCR_MODEL, get_client
 
-CACHE_DIR = ROOT / "outputs/ocr_cache"
 PRICE_PER_PAGE = 4 / 1000  # USD, standard (non-batch) API pricing
-LOW_CONF = 0.8
-
-# Categorical slots in fixed order; structural/peripheral types share a neutral gray and are told apart by their box label.
-GRAY = "#8a8984"
-BLOCK_COLORS = {
-    "text": "#2a78d6",
-    "title": "#eb6834",
-    "table": "#1baf7a",
-    "list": "#eda100",
-    "signature": "#e87ba4",
-    "image": "#008300",
-    "caption": "#4a3aa7",
-}
+REVIEWER = os.getenv("HADOOP_USER_NAME") or os.getenv("USER") or "reviewer"
+PRIORITY = {1: "1 · Critical", 2: "2 · High", 3: "3 · Medium", 4: "Opportunity", 5: "Review"}
+TONE, GRAY, BLOCK_COLORS = brand.TONE, brand.GRAY, brand.BLOCK_COLORS
 MD_PLACEHOLDER = re.compile(r"!?\[[^\]]*\]\([^)]*\)")
 WORD_OK = re.compile(r"^[\w$%.,;:'\"()/&-]+$")
 
-st.set_page_config(page_title="Mistral OCR 4 · Document AI demo", layout="wide")
-st.markdown(
-    """<style>
-    .chip {display:inline-flex;align-items:center;gap:6px;margin:0 14px 4px 0;font-size:0.85rem;color:#52514e}
-    .chip span.sw {width:12px;height:12px;border-radius:3px;display:inline-block}
-    mark.lowconf {background:#fde3c8;border-bottom:2px solid #ec835a;padding:0 1px;border-radius:2px}
-    </style>""",
-    unsafe_allow_html=True,
-)
+st.set_page_config(page_title="Document AI · Cloudera + Mistral AI", page_icon=brand.MISTRAL_ICON, layout="wide")
+st.markdown(brand.CSS, unsafe_allow_html=True)
 
 
-# ---------- data helpers ----------
-
-@st.cache_data(show_spinner=False)
-def cuad_library() -> dict[str, str]:
-    """Map pdf path -> display label for every CUAD contract."""
-    lib = {}
-    for p in sorted(PDF_DIR.rglob("*")):
-        if p.suffix.lower() != ".pdf":
-            continue
-        company = p.stem.split("_")[0]
-        doc_type = re.split(r"[_-]", p.stem)[-1].strip().title()
-        lib[str(p)] = f"{p.parent.name.replace('_', ' ')} · {company} · {doc_type}"
-    return lib
+# ---------- data access (Iceberg via Impala, PDFs and OCR output from S3) ----------
 
 
-@st.cache_data(show_spinner=False)
-def reference_texts() -> dict[str, str]:
-    return {p.stem: str(p) for p in TXT_DIR.rglob("*.txt")}
+@st.cache_data(ttl=600, show_spinner=False)
+def q(sql: str) -> pd.DataFrame:
+    return pd.DataFrame(lake.query(sql))
+
+
+def refresh() -> None:
+    q.clear()
 
 
 @st.cache_resource(show_spinner=False)
@@ -93,64 +56,36 @@ def client():
         st.stop()
 
 
-def cache_path(sha: str, table_format: str) -> Path:
-    return CACHE_DIR / f"{sha}_{table_format}.json"
+@st.cache_data(show_spinner=False)
+def pdf(sha256: str, s3_uri: str) -> bytes:
+    return pipeline.pdf_bytes({"sha256": sha256, "s3_uri": s3_uri})
 
 
-def run_ocr(name: str, data: bytes, table_format: str, use_cache: bool) -> dict:
-    sha = hashlib.sha256(data).hexdigest()
-    path = cache_path(sha, table_format)
-    if use_cache and path.exists():
-        saved = json.loads(path.read_text())
-        resp, seconds, cached = OCRResponse.model_validate(saved["response"]), saved["seconds"], True
-    else:
-        start = time.perf_counter()
-        resp = ocr_bytes(client(), data, table_format=table_format, confidence="word", include_images=True)
-        seconds, cached = time.perf_counter() - start, False
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"name": name, "seconds": seconds, "response": resp.model_dump(mode="json")}))
-
-    ref = reference_texts().get(Path(name).stem)
-    full_md = "\n\n".join(page_markdown(p) for p in resp.pages)
-    return {
-        "name": name,
-        "sha": sha,
-        "pdf": data,
-        "resp": resp,
-        "seconds": seconds,
-        "cached": cached,
-        "similarity": similarity(full_md, Path(ref)) if ref else None,
-    }
+@st.cache_data(show_spinner=False)
+def ocr(doc_id: str, processed_at: str) -> OCRResponse:
+    raw = {k: v for k, v in pipeline.ocr_json(doc_id).items() if not k.startswith("_")}
+    return OCRResponse.model_validate(raw)
 
 
-def run_annotation(doc: dict, prompt: str | None, use_cache: bool, cache_only: bool = False) -> dict | None:
-    """OCR 4 call with document annotations (schema + optional prompt), cached per document, schema and prompt."""
-    key = hashlib.sha1((json.dumps(ANNOTATION_FORMAT, sort_keys=True) + (prompt or "")).encode()).hexdigest()[:12]
-    path = CACHE_DIR / f"{doc['sha']}_annot_{key}.json"
-    if use_cache and path.exists():
-        saved, cached = json.loads(path.read_text()), True
-    elif cache_only:
-        return None
-    else:
-        start = time.perf_counter()
-        resp = annotate(client(), doc["pdf"], prompt)
-        saved, cached = {"seconds": time.perf_counter() - start, "prompt": prompt, "annotation": resp.document_annotation}, False
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(saved))
-    return {"fields": parse_fields(saved["annotation"]), "seconds": saved["seconds"], "cached": cached}
+def documents() -> pd.DataFrame:
+    return q(f"""SELECT d.doc_id, d.file_name, d.s3_uri, d.sha256, d.source, d.status,
+                        CAST(d.ingested_at AS STRING) ingested_at, CAST(d.processed_at AS STRING) processed_at,
+                        h.vendor_name, h.invoice_number, h.total
+                 FROM {DB}.documents d LEFT JOIN {DB}.invoice_header h ON h.doc_id = d.doc_id ORDER BY d.doc_id""")
+
+
+def extractions(doc_id: str) -> pd.DataFrame:
+    return q(f"SELECT * FROM {DB}.extractions WHERE doc_id = {lake.lit(doc_id)} ORDER BY line_no NULLS FIRST, field_name")
 
 
 @st.cache_data(show_spinner=False)
 def render_page(sha: str, _pdf: bytes, index: int, dpi: int) -> Image.Image:
     with pymupdf.open(stream=_pdf, filetype="pdf") as doc:
         pix = doc[index].get_pixmap(dpi=dpi)
-        return Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
+        return Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
 
 
-@st.cache_data(show_spinner=False)
-def text_layer(sha: str, _pdf: bytes) -> list[str]:
-    with pymupdf.open(stream=_pdf, filetype="pdf") as doc:
-        return [page.get_text() for page in doc]
+# ---------- drawing ----------
 
 
 def blocks(page) -> list:
@@ -181,6 +116,25 @@ def draw_blocks(img: Image.Image, page) -> Image.Image:
         draw.rectangle(label, fill=rgb + (235,))
         draw.text((label[0] + 4, label[1] + 1), b.type, fill=(255, 255, 255, 255), font=font)
     return Image.alpha_composite(out.convert("RGBA"), overlay).convert("RGB")
+
+
+def draw_evidence(img: Image.Image, marks: list[tuple[list[float], str, str, bool]]) -> Image.Image:
+    """marks: (bbox as page fractions, label, hex color, primary)."""
+    out = img.convert("RGBA")
+    overlay = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    font = ImageFont.load_default(size=max(12, img.width // 70))
+    for bbox, label, color, primary in sorted(marks, key=lambda m: m[3]):
+        rgb = tuple(int(color[i : i + 2], 16) for i in (1, 3, 5))
+        pad = 4 if primary else 2
+        box = [bbox[0] * img.width - pad, bbox[1] * img.height - pad, bbox[2] * img.width + pad, bbox[3] * img.height + pad]
+        draw.rectangle(box, fill=rgb + ((40 if primary else 18),), outline=rgb + (255,), width=4 if primary else 2)
+        if primary:
+            tw = draw.textlength(label, font=font)
+            tag = [box[0], box[1] - font.size - 8, box[0] + tw + 12, box[1]]
+            draw.rectangle(tag, fill=rgb + (240,))
+            draw.text((tag[0] + 6, tag[1] + 3), label, fill=(255, 255, 255, 255), font=font)
+    return Image.alpha_composite(out, overlay).convert("RGB")
 
 
 def legend(types) -> None:
@@ -229,250 +183,362 @@ def low_conf_words(resp, n=15) -> pd.DataFrame:
     return pd.DataFrame(rows[:n])
 
 
-def strip_images(dump: dict) -> dict:
-    for p in dump.get("pages", []):
-        for img in p.get("images", []):
-            if img.get("image_base64"):
-                img["image_base64"] = "<base64 omitted>"
-    return dump
+def has(v) -> bool:
+    """True for a real value (pandas turns missing numbers into NaN, which is truthy)."""
+    return v is not None and not (isinstance(v, float) and pd.isna(v)) and v != ""
+
+
+def money(x) -> str:
+    return f"${float(x):,.2f}" if has(x) else ""
 
 
 # ---------- sidebar ----------
 
+VIEWS = ["Action queue", "Ingest an invoice", "Under the hood"]
 with st.sidebar:
-    st.title("Document AI")
-    st.caption(f"Model: `{OCR_MODEL}` · ${PRICE_PER_PAGE * 1000:.0f} per 1,000 pages")
-    source = st.radio("Documents", ["Sample contracts (CUAD)", "Upload PDFs"], horizontal=False)
-    selected: list[tuple[str, bytes | Path]] = []
-    if source.startswith("Sample"):
-        lib = cuad_library()
-        picks = st.multiselect(
-            f"Choose from {len(lib)} contracts",
-            options=list(lib),
-            default=[str(p) for p in DEFAULT_PDFS if str(p) in lib],
-            format_func=lib.get,
-            placeholder="Type to search by company or type",
-        )
-        selected = [(Path(p).name, Path(p)) for p in picks]
+    st.markdown(brand.sidebar(), unsafe_allow_html=True)
+    view = st.radio("View", VIEWS, key="view", label_visibility="collapsed")
+    st.divider()
+    st.caption(f"OCR: `{OCR_MODEL}` (schema mode)  \nData: Iceberg `{DB}` via Impala  \nFiles: `{S3_ROOT}`  \n"
+               f"Business date: {AS_OF:%b %d, %Y}")
+    if st.button("Refresh data", width="stretch"):
+        refresh()
+        st.rerun()
+    st.markdown("<div class='legal'>Cloudera and Mistral AI logos are trademarks of their owners. "
+                "Vendors and invoices are fictitious.</div>", unsafe_allow_html=True)
+
+
+# ---------- 1. Action queue ----------
+
+
+def evidence_image(doc: pd.Series, exc: dict, fields: dict, tone: str):
+    keys = explain.evidence_keys(exc)
+    primary = fields.get(keys[0])
+    resp = ocr(doc["doc_id"], doc["processed_at"])
+    n_pages = len(resp.pages)
+    page_no = int(primary["page"]) if primary is not None and has(primary.get("page")) else 1
+    if n_pages > 1:
+        page_no = st.segmented_control("Page", list(range(1, n_pages + 1)), default=page_no, key=f"pg_{doc['doc_id']}_{exc['rule_code']}") or page_no
+    data = pdf(doc["sha256"], doc["s3_uri"])
+    img = render_page(doc["sha256"], data, page_no - 1, 130)
+    marks = []
+    for i, key in enumerate(keys):
+        f = fields.get(key)
+        if f is None or not has(f.get("bbox")) or not has(f.get("page")) or int(f["page"]) != page_no:
+            continue
+        conf = f.get("confidence")
+        label = f"{key[0].replace('_', ' ')}" + (f" · {conf:.2f}" if has(conf) else "")
+        marks.append((json.loads(f["bbox"]), label, TONE[tone] if i == 0 else brand.EVIDENCE, i == 0))
+    st.image(draw_evidence(img, marks), width="stretch")
+    if primary is not None and has(primary.get("bbox")):
+        conf = primary.get("confidence")
+        st.caption(f"Evidence: page {int(primary['page'])}"
+                   + (f" · OCR confidence {conf:.2f}" if has(conf) else "")
+                   + f" · {primary['model']} · {primary['extracted_at']}  \nSource file: `{doc['s3_uri']}`")
+
+
+def action_queue() -> None:
+    docs = documents()
+    exc = q(f"""SELECT e.*, v.name vendor_name, d.source, d.file_name
+                FROM {DB}.exceptions e
+                LEFT JOIN {DB}.vendors v ON v.vendor_id = e.vendor_id
+                LEFT JOIN {DB}.documents d ON d.doc_id = e.doc_id
+                ORDER BY e.priority, e.amount_at_risk DESC""")
+    n_fields = int(q(f"SELECT COUNT(*) n FROM {DB}.extractions")["n"].iloc[0])
+    processed = int((docs["status"] == "processed").sum()) if not docs.empty else 0
+
+    st.markdown(brand.header("Invoices that need action",
+                             "Supplier invoices read by Mistral OCR 4, checked against governed data in Cloudera."),
+                unsafe_allow_html=True)
+    risk = exc[exc["priority"] <= 3] if not exc.empty else exc
+    savings = exc[exc["rule_code"] == "DISCOUNT_WINDOW"] if not exc.empty else exc
+    review = exc[exc["rule_code"] == "LOW_CONFIDENCE"] if not exc.empty else exc
+    s1, s2, s3 = st.columns(3)
+    s1.markdown(brand.step(1, "Read", "Mistral OCR 4", f"Extracted {n_fields:,} fields from {processed} invoice PDFs "
+                           "in S3, inside this environment."), unsafe_allow_html=True)
+    s2.markdown(brand.step(2, "Join", "Cloudera", "Every field checked against the vendor master, POs, goods receipts "
+                           "and payments in Iceberg (Impala)."), unsafe_allow_html=True)
+    s3.markdown(brand.step(3, "Act", "Together", f"{len(exc)} actions, each linked to the exact spot on the page and "
+                           "to the record that triggered it."), unsafe_allow_html=True)
+    st.write("")
+
+    k = st.columns(5)
+    k[0].metric("Invoices processed", processed)
+    k[1].metric("Need action", risk["doc_id"].nunique() if not risk.empty else 0)
+    at_risk = risk["amount_at_risk"].astype(float).sum() if not risk.empty else 0
+    to_save = savings["amount_at_risk"].astype(float).sum() if not savings.empty else 0
+    k[2].metric("Dollars at risk", f"${at_risk:,.0f}", help=money(at_risk))
+    k[3].metric("Discounts", f"${to_save:,.0f}", help=money(to_save))
+    k[4].metric("Human review", review["doc_id"].nunique() if not review.empty else 0,
+                help=f"A key field read with OCR confidence below {MIN_CONFIDENCE:.2f}")
+
+    if exc.empty:
+        st.info("No exceptions. Run the pipeline (`python -m ap.pipeline --pending`) or ingest an invoice.")
+        return
+
+    table = pd.DataFrame({
+        "Priority": exc["priority"].map(PRIORITY),
+        "Issue": exc["rule_code"].map(lambda r: explain.RULES.get(r, (r,))[0]),
+        "Vendor": exc["vendor_name"].fillna("(unknown)"),
+        "Invoice": exc["invoice_number"],
+        "Amount": exc["amount_at_risk"].astype(float),
+        "Recommended action": exc["action"],
+        "Doc": exc["doc_id"] + exc["source"].map(lambda s: " (live)" if s == "upload" else ""),
+    })
+    # The selection resets whenever the queue's contents change (key includes them), so a row index never
+    # points at a different invoice after the rules rerun. Without a selection, the last focused invoice stays open.
+    version = abs(hash(tuple(exc["doc_id"] + exc["rule_code"])))
+    sel = st.dataframe(
+        table, hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row", key=f"queue_{version}",
+        column_config={"Amount": st.column_config.NumberColumn(format="$%,.2f"),
+                       "Recommended action": st.column_config.TextColumn(width="large")},
+    )
+    rows = sel.selection.rows if sel and sel.selection else []
+    focus = st.session_state.get("focus")  # (doc_id, rule_code)
+    if rows:
+        i = rows[0]
+    elif focus and ((exc["doc_id"] == focus[0]) & (exc["rule_code"] == focus[1])).any():
+        i = int(((exc["doc_id"] == focus[0]) & (exc["rule_code"] == focus[1])).to_numpy().argmax())
+    elif focus and (exc["doc_id"] == focus[0]).any():
+        i = int((exc["doc_id"] == focus[0]).to_numpy().argmax())
     else:
-        files = st.file_uploader("PDF files", type="pdf", accept_multiple_files=True)
-        selected = [(f.name, f.getvalue()) for f in files or []]
+        i = 0
+    st.session_state["focus"] = (exc["doc_id"].iloc[i], exc["rule_code"].iloc[i])
+    e = exc.iloc[i].to_dict()
+    label, how, tone = explain.RULES.get(e["rule_code"], (e["rule_code"], "", "risk"))
+    doc = docs[docs["doc_id"] == e["doc_id"]].iloc[0]
+    fx = extractions(e["doc_id"])
+    fields = {(r["field_name"], None if pd.isna(r["line_no"]) else int(r["line_no"])): r for r in fx.to_dict("records")}
 
-    with st.expander("Options"):
-        table_format = st.radio("Table format", ["markdown", "html"], horizontal=True)
-        use_cache = st.toggle("Reuse cached results", value=True, help="Instant replay of documents already processed.")
-
-    run = st.button("Run OCR 4", type="primary", disabled=not selected, width="stretch")
-
-if run:
-    results = []
-    progress = st.progress(0.0, text="Starting…")
-    for i, (name, src) in enumerate(selected):
-        progress.progress(i / len(selected), text=f"OCR 4 is reading {name} ({i + 1}/{len(selected)})")
-        try:
-            data = src.read_bytes() if isinstance(src, Path) else src
-            results.append(run_ocr(name, data, table_format, use_cache))
-        except Exception as e:
-            st.error(f"**{name}**: OCR failed: {e}")
-    progress.empty()
-    st.session_state["results"] = results
-
-results = st.session_state.get("results")
-
-# ---------- landing ----------
-
-if not results:
-    st.title("Mistral OCR 4 for document understanding")
-    st.write(
-        "Pick contracts in the sidebar (or upload your own PDFs) and press **Run OCR 4**. "
-        "The model turns each page into structured markdown, and this demo shows what it got out."
-    )
-    cards = [
-        ("Keeps structure", "Headings, numbered clauses, lists and tables come out as clean markdown, not a wall of text."),
-        ("Sees the layout", "Every block is classified (title, text, table, signature, header…) with its position on the page."),
-        ("Knows when it's unsure", "Confidence per page and per word; unreadable handwriting is marked [ILLEGIBLE], not guessed."),
-        ("Takes context", "Give it a schema and instructions and it returns the contract terms you need, with supporting quotes."),
-        ("Fast and cheap", "Roughly a second per few pages, at $4 per 1,000 pages."),
-    ]
-    for col, (title, body) in zip(st.columns(len(cards)), cards):
-        with col.container(border=True):
-            st.markdown(f"**{title}**")
-            st.caption(body)
-    st.stop()
-
-# ---------- batch summary ----------
-
-st.title("OCR 4 results")
-if len(results) > 1:
-    summary = pd.DataFrame(
-        [
-            {
-                "Document": r["name"],
-                "Pages": r["resp"].usage_info.pages_processed,
-                "Seconds": round(r["seconds"], 1),
-                "Avg confidence": sum(p.confidence_scores.average_page_confidence_score for p in r["resp"].pages)
-                / len(r["resp"].pages),
-                "Tables": sum(len(p.tables or []) for p in r["resp"].pages),
-                "Similarity to reference": r["similarity"],
-            }
-            for r in results
-        ]
-    )
-    st.dataframe(
-        summary,
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Avg confidence": st.column_config.NumberColumn(format="%.3f"),
-            "Similarity to reference": st.column_config.NumberColumn(format="%.3f"),
-        },
-    )
-    doc = results[st.selectbox("Document", range(len(results)), format_func=lambda i: results[i]["name"])]
-else:
-    doc = results[0]
-    st.subheader(doc["name"])
-
-resp, sha = doc["resp"], doc["sha"]
-pages = resp.pages
-n_pages = resp.usage_info.pages_processed
-avg_conf = sum(p.confidence_scores.average_page_confidence_score for p in pages) / len(pages)
-n_blocks = sum(len(blocks(p)) for p in pages)
-n_tables = sum(len(p.tables or []) for p in pages)
-
-k = st.columns(6)
-k[0].metric("Pages", n_pages)
-k[1].metric("Processing time", f"{doc['seconds']:.1f}s", help="Cached replay: time of the original run." if doc["cached"] else None)
-k[2].metric("Throughput", f"{n_pages / doc['seconds']:.1f} pages/s")
-k[3].metric("Avg confidence", f"{avg_conf:.1%}")
-k[4].metric("Layout blocks", n_blocks, help=f"{n_tables} tables")
-k[5].metric("Est. cost", f"${n_pages * PRICE_PER_PAGE:.3f}")
-if doc["cached"]:
-    st.caption("Loaded from cache: no API call was made for this run.")
-
-page_no = st.slider("Page", 1, n_pages, 1, key=f"page_{sha}") if n_pages > 1 else 1
-page = pages[page_no - 1]
-
-t_side, t_fields, t_ask, t_full, t_conf, t_layout, t_basic, t_json = st.tabs(
-    ["Side-by-side", "Extracted fields", "Ask the document", "Full text", "Confidence", "Layout & tables", "vs. basic extraction", "Raw JSON"]
-)
-
-# 1. Side-by-side
-with t_side:
-    c1, c2, c3 = st.columns([1, 1, 2])
-    show_boxes = c1.toggle("Show layout boxes", value=True)
-    highlight = c2.toggle("Highlight uncertain words", value=True, help=f"Words below {LOW_CONF:.0%} confidence")
-    raw = c3.toggle("Show raw markdown")
-    left, right = st.columns(2, gap="large")
+    st.divider()
+    left, right = st.columns([1.15, 1], gap="large")
     with left:
-        dpi = page.dimensions.dpi if page.dimensions else 100
-        img = render_page(sha, doc["pdf"], page.index, dpi * 2)
-        st.image(draw_blocks(img, page) if show_boxes else img, width="stretch")
-        if show_boxes:
-            legend({b.type for b in blocks(page)})
-    with right, st.container(height=900, border=True):
-        if raw:
-            st.code(page_markdown(page), language="markdown", wrap_lines=True)
-        else:
-            show_md(highlighted_markdown(page, LOW_CONF) if highlight else page_markdown(page, inline_images=True))
+        evidence_image(doc, e, fields, tone)
+    with right:
+        st.markdown(f"{brand.tag(label, tone)} "
+                    f"&nbsp; **{e['vendor_name'] or '(unknown vendor)'}** · invoice {e['invoice_number']}",
+                    unsafe_allow_html=True)
+        amount = e["amount_at_risk"]
+        if has(amount):
+            st.markdown(f"### {money(amount)} {'savings' if tone == 'opportunity' else 'at risk'}")
+        st.write(e["detail"])
+        {"risk": st.error, "review": st.warning, "opportunity": st.success}[tone](f"**Action:** {e['action']}")
 
-# 2. Extracted fields: context given to OCR 4 itself (document annotations)
-RESULT_LABELS = {
-    "match": "✓ match",
-    "both empty": "✓ correctly empty",
-    "partial": "≈ partial",
-    "mismatch": "✗ mismatch",
-    "missed": "✗ missed",
-    "extra": "+ not in CUAD labels",
-}
-with t_fields:
-    st.markdown(
-        "**Context for OCR 4 itself.** Alongside the PDF, OCR 4 accepts a JSON schema of the fields you want (each "
-        "field's description is an instruction) and an optional free-text prompt. In the same call that transcribes the "
-        "document, it returns those fields as JSON, each with a supporting quote."
-    )
-    f1, f2 = st.columns([3, 1])
-    with f1:
-        prompt_text = st.text_area("Prompt (`document_annotation_prompt`)", DEFAULT_PROMPT, height=230, key="annot_prompt")
-    with f2:
-        use_prompt = st.toggle("Send the prompt", value=True, help="Turn off to compare against the schema alone.")
-        extract = st.button("Extract fields", type="primary", width="stretch")
-        st.caption("Edit the prompt and re-run to see how the context changes the output.")
-    prompt = prompt_text if use_prompt else None
-
-    try:
-        annot = run_annotation(doc, prompt, use_cache, cache_only=not extract)
-    except Exception as e:
-        annot = None
-        st.error(f"Extraction failed: {e}")
-
-    if annot:
-        labels = cuad_labels(doc["name"])
-        rows = score(annot["fields"], labels or {})
-        a1, a2, a3 = st.columns(3)
-        if labels:
-            a1.metric("Agreement with CUAD labels", f"{accuracy(rows):.0%}", help="Match or correctly empty = 1, partial = 0.5.")
-        a2.metric("Fields extracted", f"{sum(bool(r['value']) for r in rows)} / {len(rows)}")
-        a3.metric("Extraction time", f"{annot['seconds']:.1f}s", help="OCR + annotation in one call." + (" Cached." if annot["cached"] else ""))
-        st.dataframe(
-            pd.DataFrame(
-                {
-                    "Field": [r["field"].replace("_", " ").capitalize() for r in rows],
-                    "Extracted": [r["value"] for r in rows],
-                    "Supporting quote": [r["quote"] for r in rows],
-                    **({"CUAD label": [r["label"] for r in rows], "Result": [RESULT_LABELS[r["result"]] for r in rows]} if labels else {}),
-                }
-            ),
-            hide_index=True,
-            width="stretch",
-            row_height=60,
-            column_config={"Supporting quote": st.column_config.TextColumn(width="large")},
-        )
-        if labels:
-            st.caption(
-                "CUAD labels are human annotations of this contract. \"Not in CUAD labels\" means the model found a value "
-                "the annotators left blank, so check the quote."
+        st.markdown(f"**The document vs. the record** ({how})")
+        comp = explain.comparison(e, fields)
+        if comp:
+            st.dataframe(
+                pd.DataFrame({
+                    "": [c["what"] for c in comp],
+                    "On the invoice (OCR 4)": [c["invoice"] for c in comp],
+                    "In Cloudera": [c["record"] for c in comp],
+                    "Table": [f"{DB}.{c['source']}" if c["source"] else "" for c in comp],
+                    "Match": ["yes" if c["ok"] else "NO" for c in comp],
+                }),
+                hide_index=True, width="stretch",
             )
+        if e["rule_code"] == "LOW_CONFIDENCE":
+            f = fields.get((e["evidence_field"], None)) or {}
+            with st.form(f"review_{e['doc_id']}_{e['evidence_field']}"):
+                st.markdown(f"**Review:** compare with the highlighted spot on the page and confirm the "
+                            f"{e['evidence_field'].replace('_', ' ')}.")
+                value = st.text_input("Confirmed value", f.get("field_value") or "")
+                if st.form_submit_button("Confirm and re-check", type="primary"):
+                    with st.spinner("Saving the reviewed value and rerunning the rules…"):
+                        pipeline.confirm_field(e["doc_id"], e["evidence_field"], value.strip(), REVIEWER)
+                    refresh()
+                    st.session_state["focus"] = (e["doc_id"], None)
+                    st.rerun()
+        others = exc[(exc["doc_id"] == e["doc_id"]) & (exc.index != exc.index[i])]
+        if not others.empty:
+            st.caption("Also on this invoice: " + ", ".join(explain.RULES.get(r, (r,))[0] for r in others["rule_code"]))
+        with st.expander("How Cloudera found this (SQL over Iceberg)"):
+            st.code(explain.rule_sql(e["rule_code"]), language="sql")
+        with st.expander("Audit trail"):
+            st.markdown(
+                f"- File landed: `{doc['s3_uri']}` at {doc['ingested_at']} (sha256 `{doc['sha256'][:16]}…`)\n"
+                f"- Read by `{OCR_MODEL}` at {doc['processed_at']}; raw output `{pipeline.ocr_uri(doc['doc_id'])}`\n"
+                f"- Fields in `{DB}.extractions` (with page, bounding box and confidence)\n"
+                f"- Exception written to `{DB}.exceptions` at {e['created_at']}"
+            )
+
+
+# ---------- 2. Ingest ----------
+
+
+def ingest_view() -> None:
+    st.markdown(brand.header("Ingest an invoice",
+                             "A new invoice lands in governed S3, Mistral OCR 4 reads it inside the environment, and the "
+                             "same rules check it against enterprise data. The same code runs in the batch Job."),
+                unsafe_allow_html=True)
+    samples = sorted((DATA / "live").glob("*.pdf"))
+    src = st.radio("Source", ["Held-back sample invoices", "Upload a PDF"], horizontal=True)
+    data = name = None
+    if src.startswith("Held"):
+        if samples:
+            pick = st.selectbox("Invoice", samples, format_func=lambda p: p.name)
+            data, name = pick.read_bytes(), pick.name
         else:
-            st.caption("No CUAD labels for this document, so there is no score. Check the values against the quotes.")
-    elif not extract:
-        st.info("Press **Extract fields** to run OCR 4 with this schema and prompt.")
+            st.info("No held-back samples. Run `python -m ap.generate` first.")
+    else:
+        f = st.file_uploader("Invoice PDF", type="pdf")
+        if f:
+            data, name = f.getvalue(), f.name
+    if data and st.button("Ingest and check", type="primary"):
+        times = {}
+        with st.status("Processing…", expanded=True) as status:
+            t = time.perf_counter()
+            st.write(f"Landing the PDF in `{pipeline.lake.LANDING}` (access governed by SDX)…")
+            doc_id = pipeline.land(data, name)
+            times["Land in S3"] = time.perf_counter() - t
+            t = time.perf_counter()
+            st.write(f"Mistral OCR 4 is reading `{doc_id}` with the invoice schema…")
+            pipeline.process(pipeline.documents(f"doc_id = {lake.lit(doc_id)}"))
+            times["OCR 4 + evidence"] = time.perf_counter() - t
+            t = time.perf_counter()
+            st.write("Joining every field against vendors, POs, receipts and payments in Iceberg…")
+            pipeline.run_rules()
+            times["Rules in Impala"] = time.perf_counter() - t
+            status.update(label=f"Done: {doc_id}", state="complete")
+        refresh()
+        st.session_state["ingested"] = (doc_id, times)
+    if "ingested" in st.session_state:
+        doc_id, times = st.session_state["ingested"]
+        st.caption(" · ".join(f"{k} {v:.1f}s" for k, v in times.items()))
+        found = q(f"SELECT rule_code, detail, amount_at_risk, action FROM {DB}.exceptions WHERE doc_id = {lake.lit(doc_id)}")
+        if found.empty:
+            st.success(f"`{doc_id}` passed every check: ready to pay on its due date.")
+        else:
+            for r in found.to_dict("records"):
+                label, _, tone = explain.RULES.get(r["rule_code"], (r["rule_code"], "", "risk"))
+                {"risk": st.error, "review": st.warning, "opportunity": st.success}[tone](
+                    f"**{label}** {money(r['amount_at_risk'])}: {r['detail']}  \n{r['action']}")
 
-    with st.expander("The context sent to OCR 4 (schema + prompt)"):
-        st.markdown("`document_annotation_format`: JSON schema; field descriptions act as instructions")
-        st.json(ANNOTATION_FORMAT, expanded=False)
-        st.markdown("`document_annotation_prompt`")
-        st.code(prompt or "(not sent)", language=None, wrap_lines=True)
+        def open_in_queue():
+            st.session_state["view"] = "Action queue"
+            st.session_state["focus"] = (doc_id, None)
 
-# 3. Ask the document: system prompt for a chat model that uses OCR 4 output as a tool
-with t_ask:
-    docs = {r["name"]: doc_for_chat(r["resp"], page_markdown) for r in results}
+        st.button("Open in the action queue", on_click=open_in_queue, disabled=found.empty)
+
+
+# ---------- 3. Under the hood ----------
+
+
+def under_the_hood() -> None:
+    st.markdown(brand.header("Under the hood", "What OCR 4 returned, where the data lives, and how well it scores."),
+                unsafe_allow_html=True)
+    t_doc, t_lake, t_eval = st.tabs(["One document", "Data lake & rules", "Accuracy"])
+    with t_doc:
+        docs = documents()
+        docs = docs[docs["status"] == "processed"]
+        if docs.empty:
+            st.info("No processed documents yet.")
+        else:
+            document_detail(docs)
+    with t_lake:
+        lake_view()
+    with t_eval:
+        st.write("The generator knows the true value of every field and every planted issue, so the pipeline can be "
+                 "scored end to end.")
+        if st.button("Score against ground truth"):
+            from ap.evaluate import evaluate
+            with st.spinner("Scoring…"):
+                st.session_state["eval"] = evaluate()
+        r = st.session_state.get("eval")
+        if r:
+            ok = sum(x["status"] == "ok" for x in r["queue"])
+            e1, e2, e3 = st.columns(3)
+            e1.metric("Field accuracy", f"{r['field_accuracy']:.1%}", help=f"{r['fields']:,} fields in {r['docs']} documents")
+            e2.metric("Planted issues found", f"{ok} / {len(r['queue'])}")
+            e3.metric("Routed to review", len(r["review"]))
+            if r["misses"]:
+                st.dataframe(pd.DataFrame(r["misses"], columns=["Doc", "Field", "Expected", "Extracted"]).assign(
+                    **{"Caught by review": lambda d: d["Doc"].isin(r["review"])}), hide_index=True, width="stretch")
+
+
+def document_detail(docs: pd.DataFrame) -> None:
+    labels = {r["doc_id"]: f"{r['doc_id']} · {r['vendor_name']} · {r['invoice_number']}" for r in docs.to_dict("records")}
+    doc_id = st.selectbox("Document", list(labels), format_func=labels.get)
+    doc = docs[docs["doc_id"] == doc_id].iloc[0]
+    resp = ocr(doc_id, doc["processed_at"])
+    pages = resp.pages
+    data = pdf(doc["sha256"], doc["s3_uri"])
+    avg_conf = sum(p.confidence_scores.average_page_confidence_score for p in pages) / len(pages)
+    raw = pipeline.ocr_json(doc_id)
+    k = st.columns(5)
+    k[0].metric("Pages", len(pages))
+    k[1].metric("OCR + extraction", f"{raw.get('_seconds', 0):.1f}s")
+    k[2].metric("Avg confidence", f"{avg_conf:.1%}")
+    k[3].metric("Layout blocks", sum(len(blocks(p)) for p in pages))
+    k[4].metric("Est. cost", f"${len(pages) * PRICE_PER_PAGE:.3f}")
+    page_no = st.segmented_control("Page", list(range(1, len(pages) + 1)), default=1, key=f"utp_{doc_id}") if len(pages) > 1 else 1
+    page = pages[(page_no or 1) - 1]
+
+    t_side, t_fields, t_ask, t_conf, t_json = st.tabs(["Page & layout", "Extracted fields", "Ask the invoice", "Confidence", "Raw JSON"])
+    with t_side:
+        left, right = st.columns(2, gap="large")
+        with left:
+            dpi = page.dimensions.dpi if page.dimensions else 100
+            st.image(draw_blocks(render_page(doc["sha256"], data, page.index, dpi * 2), page), width="stretch")
+            legend({b.type for b in blocks(page)})
+        with right, st.container(height=900, border=True):
+            show_md(highlighted_markdown(page, MIN_CONFIDENCE))
+    with t_fields:
+        fx = extractions(doc_id)
+        st.markdown("**Context sent to OCR 4:** a JSON schema (`document_annotation_format`, each field description is an "
+                    "instruction) and a prompt (`document_annotation_prompt`). Page, box and confidence come from OCR 4's "
+                    "layout blocks and word scores.")
+        st.dataframe(
+            fx[["field_name", "line_no", "field_value", "confidence", "page", "model"]].rename(columns={
+                "field_name": "Field", "line_no": "Line", "field_value": "Value", "confidence": "Confidence",
+                "page": "Page", "model": "Extracted by"}),
+            hide_index=True, width="stretch", height=520,
+            column_config={"Confidence": st.column_config.ProgressColumn(format="%.2f", min_value=0, max_value=1)},
+        )
+        c1, c2 = st.columns(2)
+        with c1.expander("Schema (document_annotation_format)"):
+            st.json(ANNOTATION_FORMAT, expanded=False)
+        with c2.expander("Prompt (document_annotation_prompt)"):
+            st.code(INVOICE_PROMPT, language=None, wrap_lines=True)
+    with t_ask:
+        chat(doc_id, resp)
+    with t_conf:
+        conf_df = pd.DataFrame([
+            {"Page": p.index + 1, "Measure": label, "Confidence": getattr(p.confidence_scores, attr)}
+            for p in pages for label, attr in (("Average", "average_page_confidence_score"), ("Lowest word", "minimum_page_confidence_score"))
+        ])
+        base = alt.Chart(conf_df).encode(
+            x=alt.X("Page:O", axis=alt.Axis(labelAngle=0, grid=False)),
+            y=alt.Y("Confidence:Q", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%", gridColor="#F1EBDD")),
+            color=alt.Color("Measure:N", scale=alt.Scale(domain=["Average", "Lowest word"], range=[brand.EVIDENCE, brand.MISTRAL_ORANGE]),
+                            legend=alt.Legend(orient="top", title=None)),
+            tooltip=["Page", "Measure", alt.Tooltip("Confidence:Q", format=".1%")],
+        )
+        st.altair_chart((base.mark_line(strokeWidth=2) + base.mark_point(size=80, filled=True)).properties(height=240), width="stretch")
+        st.markdown("**Least certain words**: where a reviewer should look first")
+        st.dataframe(low_conf_words(resp), hide_index=True, width="stretch",
+                     column_config={"Confidence": st.column_config.ProgressColumn(format="%.2f", min_value=0, max_value=1)})
+    with t_json:
+        st.json(raw, expanded=False)
+
+
+def chat(doc_id: str, resp) -> None:
+    docs = {doc_id: doc_for_chat(resp, page_markdown)}
     system = SYSTEM_PROMPT.format(documents=", ".join(docs))
-    chat_id = tuple(r["sha"] for r in results)
-    if st.session_state.get("chat_id") != chat_id:
-        st.session_state.update(chat_id=chat_id, chat_messages=[{"role": "system", "content": system}], chat_log=[])
-
-    st.markdown(
-        f"**Context for a chat model.** A system prompt tells `{CHAT_MODEL}` its role, its rules, and the "
-        "`read_document` tool it can call. The tool returns OCR 4's text for a contract, so the model decides when to "
-        "read which document, then answers with page citations. This is the pattern from Mistral's OCR tool-usage cookbook."
-    )
+    if st.session_state.get("chat_id") != doc_id:
+        st.session_state.update(chat_id=doc_id, chat_messages=[{"role": "system", "content": system}], chat_log=[])
+    st.markdown(f"`{CHAT_MODEL}` with a system prompt and a `read_document` tool that returns OCR 4's text for the "
+                "invoice (Mistral's OCR tool-usage cookbook pattern).")
     with st.expander("What the assistant was told (system prompt + tool)"):
         st.code(system, language="markdown", wrap_lines=True)
         st.json(tool_spec(list(docs)), expanded=False)
-
-    suggestions = [
-        "Who are the parties to this agreement?",
-        "When does the agreement expire, and how does it renew?",
-        "Is there a non-compete or exclusivity clause? Quote it.",
-    ]
     pending = None
-    for col, q in zip(st.columns(len(suggestions)), suggestions):
-        if col.button(q, width="stretch"):
-            pending = q
-
-    with st.container(height=520, border=True):
+    for col, s in zip(st.columns(len(SUGGESTIONS)), SUGGESTIONS):
+        if col.button(s, width="stretch", key=f"sugg_{s}"):
+            pending = s
+    with st.container(height=420, border=True):
         if not st.session_state["chat_log"]:
-            st.caption("Ask a question about the loaded contracts, or pick a suggestion above.")
+            st.caption("Ask a question about this invoice, or pick a suggestion above.")
         for entry in st.session_state["chat_log"]:
             with st.chat_message(entry["role"]):
                 show_md(entry["content"])
@@ -480,8 +546,7 @@ with t_ask:
                     with st.expander(f"Tool calls ({len(entry['calls'])})"):
                         for c in entry["calls"]:
                             st.code(f'{c["tool"]}(name="{c["name"]}")  → {c["chars"]:,} characters of OCR text', language=None)
-
-    question = st.chat_input("Ask about the loaded contracts") or pending
+    question = st.chat_input("Ask about this invoice") or pending
     if question:
         st.session_state["chat_log"].append({"role": "user", "content": question})
         st.session_state["chat_messages"].append({"role": "user", "content": question})
@@ -493,109 +558,27 @@ with t_ask:
             st.session_state["chat_log"].append({"role": "assistant", "content": f"Error: {e}"})
         st.rerun()
 
-# 4. Full text
-with t_full:
-    plain_md = "\n\n".join(f"<!-- page {p.index + 1} -->\n{page_markdown(p)}" for p in pages)
-    d1, d2, _ = st.columns([1, 1, 4])
-    d1.download_button("Download .md", plain_md, f"{Path(doc['name']).stem}.md", "text/markdown")
-    d2.download_button("Download .json", json.dumps(resp.model_dump(mode="json")), f"{Path(doc['name']).stem}.json", "application/json")
-    with st.container(height=900, border=True):
-        for p in pages:
-            st.caption(f"Page {p.index + 1}")
-            show_md(page_markdown(p, inline_images=True))
-            st.divider()
 
-# 5. Confidence
-with t_conf:
-    illegible = [(p.index + 1, m) for p in pages for m in re.finditer(r"\[ILLEGIBLE\]", page_markdown(p))]
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Average confidence", f"{avg_conf:.1%}")
-    m2.metric("Lowest page minimum", f"{min(p.confidence_scores.minimum_page_confidence_score for p in pages):.1%}")
-    m3.metric("[ILLEGIBLE] markers", len(illegible))
+def lake_view() -> None:
+    st.markdown(f"PDFs and raw OCR output live in S3 under `{S3_ROOT}`; everything else is an Iceberg table in `{DB}`, "
+                "queried through Impala and governed by SDX (Ranger policies, Atlas lineage).")
+    from ap.setup_lake import TABLES
+    counts = q(" UNION ALL ".join(f"SELECT '{t}' AS t, COUNT(*) AS n FROM {DB}.{t}" for t in TABLES))
+    n = dict(zip(counts["t"], counts["n"]))
+    st.dataframe(pd.DataFrame([
+        {"Table": f"{DB}.{t}", "Kind": "Enterprise data" if i < 5 else "Document AI", "Rows": n.get(t), "What it holds": c}
+        for i, (t, (c, _)) in enumerate(TABLES.items())
+    ]), hide_index=True, width="stretch")
+    with st.expander("Rules: extracted fields joined against enterprise data (ap/rules.sql)"):
+        st.code(Path("ap/rules.sql").read_text(), language="sql")
+    st.markdown("**Reset the demo**")
+    st.caption("Removes live uploads (files, documents, extractions) and reruns the rules, back to the batch state.")
+    if st.button("Remove live uploads"):
+        with st.spinner("Cleaning up…"):
+            removed = pipeline.reset_uploads()
+        refresh()
+        st.session_state.pop("ingested", None)
+        st.success(f"Removed {removed} uploaded document(s).")
 
-    conf_df = pd.DataFrame(
-        [
-            {"Page": p.index + 1, "Measure": label, "Confidence": getattr(p.confidence_scores, attr)}
-            for p in pages
-            for label, attr in (("Average", "average_page_confidence_score"), ("Lowest word", "minimum_page_confidence_score"))
-        ]
-    )
-    color = alt.Color(
-        "Measure:N",
-        scale=alt.Scale(domain=["Average", "Lowest word"], range=["#2a78d6", "#eb6834"]),
-        legend=alt.Legend(orient="top", title=None),
-    )
-    base = alt.Chart(conf_df).encode(
-        x=alt.X("Page:O", axis=alt.Axis(labelAngle=0, grid=False)),
-        y=alt.Y("Confidence:Q", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%", gridColor="#e8e7e3")),
-        color=color,
-        tooltip=["Page", "Measure", alt.Tooltip("Confidence:Q", format=".1%")],
-    )
-    chart = base.mark_line(strokeWidth=2) + base.mark_point(size=80, filled=True, stroke="white", strokeWidth=2)
-    st.markdown("**Confidence by page**")
-    st.altair_chart(chart.properties(height=280), width="stretch")
 
-    st.markdown("**Least certain words**: where a human reviewer should look first")
-    st.dataframe(
-        low_conf_words(resp),
-        hide_index=True,
-        width="stretch",
-        column_config={"Confidence": st.column_config.ProgressColumn(format="%.2f", min_value=0, max_value=1)},
-    )
-    if illegible:
-        st.markdown("**Illegible content flagged by the model**")
-        for pg, m in illegible:
-            md = page_markdown(pages[pg - 1])
-            st.caption(f"Page {pg}: …{md[max(0, m.start() - 60) : m.end() + 60]}…")
-
-# 6. Layout & tables
-with t_layout:
-    block_rows = [
-        {"Page": p.index + 1, "Type": b.type, "Content": (b.content or "")[:160]} for p in pages for b in blocks(p)
-    ]
-    bdf = pd.DataFrame(block_rows)
-    if bdf.empty:
-        st.info("No layout blocks returned.")
-    else:
-        l1, l2 = st.columns([1, 3])
-        with l1:
-            st.markdown("**Block types**")
-            st.dataframe(bdf["Type"].value_counts().rename_axis("Type").reset_index(name="Count"), hide_index=True)
-        with l2:
-            types = st.multiselect("Filter by type", sorted(bdf["Type"].unique()))
-            st.dataframe(bdf[bdf["Type"].isin(types)] if types else bdf, hide_index=True, width="stretch", height=380)
-    st.markdown(f"**Extracted tables ({n_tables})**")
-    for p in pages:
-        for t in p.tables or []:
-            with st.container(border=True):
-                st.caption(f"Page {p.index + 1} · {t.id}")
-                show_md(t.content)
-    if not n_tables:
-        st.caption("No tables detected in this document.")
-
-# 7. vs basic extraction
-with t_basic:
-    layer = text_layer(sha, doc["pdf"])
-    chars = sum(len(t.strip()) for t in layer)
-    if chars < 20 * len(layer):
-        st.warning("This PDF has **no usable text layer** (scanned image). Basic extraction finds nothing; OCR 4 reads the pixels.")
-    else:
-        st.caption(
-            "This PDF has an embedded text layer. Basic extraction returns flat text with hard line breaks and no "
-            "headings, tables or reading structure; OCR 4 returns structured markdown."
-        )
-    if doc["similarity"] is not None:
-        st.metric("OCR 4 text vs CUAD reference text", f"{doc['similarity']:.1%}", help="Word-sequence similarity after removing markdown and normalizing whitespace.")
-    b1, b2 = st.columns(2, gap="large")
-    with b1:
-        st.markdown(f"**Basic PDF text layer**, page {page_no}")
-        st.code(layer[page.index] or "(empty)", language=None, height=800, wrap_lines=True)
-    with b2:
-        st.markdown(f"**OCR 4**, page {page_no}")
-        with st.container(height=800, border=True):
-            show_md(page_markdown(page, inline_images=True))
-
-# 8. Raw JSON
-with t_json:
-    st.caption("Full API response (embedded images omitted here; included in the downloaded JSON).")
-    st.json(strip_images(resp.model_dump(mode="json")), expanded=False)
+{"Action queue": action_queue, "Ingest an invoice": ingest_view, "Under the hood": under_the_hood}[view]()

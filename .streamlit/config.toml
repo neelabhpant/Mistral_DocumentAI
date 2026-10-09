@@ -1,0 +1,50 @@
+# Cloudera + Mistral AI theme. Palette rationale and the full color list: ap/brand.py.
+# Always light, whatever the viewer's OS setting.
+
+[server]
+enableStaticServing = true   # serves static/ (self-hosted fonts and logos) at app/static/
+
+[theme]
+base = "light"
+primaryColor = "#D63F06"            # the shared orange, one shade deeper so white button text passes WCAG AA (4.6:1)
+backgroundColor = "#FFFCF5"         # warm off-white
+secondaryBackgroundColor = "#FFF4DC" # Mistral beige
+textColor = "#1A1A1A"
+linkColor = "#C2410C"
+borderColor = "#E9E1CF"
+dataframeBorderColor = "#EFE8D8"
+dataframeHeaderBackgroundColor = "#FFF4DC"
+codeBackgroundColor = "#FBF6EA"
+codeTextColor = "#151524"
+redColor = "#C8102E"
+orangeColor = "#E59400"
+greenColor = "#17784E"
+blueColor = "#2463B0"
+baseRadius = "0.5rem"
+showSidebarBorder = false
+font = "Inter, Arial, sans-serif"
+headingFont = "Inter, Arial, sans-serif"
+headingFontWeights = [700, 650, 600]
+headingFontSizes = ["2.1rem", "1.6rem", "1.3rem", "1.1rem", "1rem", "0.9rem"]
+metricValueFontSize = "1.9rem"
+codeFont = "JetBrains Mono, monospace"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/Inter-Variable.woff2"
+weight = "100 900"
+
+[[theme.fontFaces]]
+family = "JetBrains Mono"
+url = "app/static/fonts/JetBrainsMono-Variable.woff2"
+weight = "100 800"
+
+[theme.sidebar]
+backgroundColor = "#0B1F33"          # deep navy (approximate Cloudera navy)
+secondaryBackgroundColor = "#14304D"
+textColor = "#F4F1EA"
+primaryColor = "#FF8205"             # Mistral orange light: 6.7:1 on navy
+borderColor = "#24415F"
+codeBackgroundColor = "#14304D"
+codeTextColor = "#FFD7B0"
+linkColor = "#FFAF01"

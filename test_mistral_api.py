@@ -12,11 +12,7 @@ from dotenv import load_dotenv
 from mistralai.client import Mistral
 
 ROOT = Path(__file__).parent
-SAMPLE_PDF = (
-    ROOT
-    / "data/cuad/CUAD_v1/full_contract_pdf/Part_I/Affiliate_Agreements"
-    / "SteelVaultCorp_20081224_10-K_EX-10.16_3074935_EX-10.16_Affiliate Agreement.pdf"
-)
+SAMPLE_PDFS = ROOT / "data/ap/pdfs"  # generated invoices (python -m ap.generate)
 OCR_MODEL = "mistral-ocr-4"
 
 
@@ -24,7 +20,8 @@ def get_client() -> Mistral:
     load_dotenv(ROOT / ".env")
     api_key = (os.getenv("MISTRAL_API") or os.getenv("MISTRAL_API_KEY") or "").strip().strip("\"'")
     if not api_key:
-        sys.exit("No API key found: set MISTRAL_API (or MISTRAL_API_KEY) in .env")
+        sys.exit("No API key found: set MISTRAL_API_KEY as a Cloudera AI project environment variable "
+                 "(Project Settings > Advanced; restart the app or session afterwards), or in .env when running locally")
     return Mistral(api_key=api_key)
 
 
@@ -42,8 +39,11 @@ def main() -> None:
     for wanted in (OCR_MODEL, "mistral-ocr-latest"):
         print(f"   {wanted}: {'available' if wanted in ocr_ids else 'NOT listed'}")
 
-    print(f"\n2) Live OCR call ({OCR_MODEL}, first page of {SAMPLE_PDF.name})...")
-    data_uri = "data:application/pdf;base64," + base64.b64encode(SAMPLE_PDF.read_bytes()).decode()
+    sample = next(iter(sorted(SAMPLE_PDFS.glob("*.pdf"))), None)
+    if sample is None:
+        sys.exit(f"   No sample PDF in {SAMPLE_PDFS}; run python -m ap.generate first")
+    print(f"\n2) Live OCR call ({OCR_MODEL}, first page of {sample.name})...")
+    data_uri = "data:application/pdf;base64," + base64.b64encode(sample.read_bytes()).decode()
     try:
         resp = client.ocr.process(
             model=OCR_MODEL,

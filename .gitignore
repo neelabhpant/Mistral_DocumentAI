@@ -1,7 +1,8 @@
 # Secrets
 .env
+token.txt
 
-# Data and generated output (CUAD dataset is downloaded separately; OCR cache contains contract text)
+# Data and generated output (python -m ap.generate recreates data/ap)
 data/
 outputs/
 
@@ -10,3 +11,5 @@ outputs/
 __pycache__/
 *.pyc
 .DS_Store
+
+.streamlit/machine_id_v4

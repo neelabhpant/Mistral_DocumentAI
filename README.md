@@ -1,52 +1,58 @@
-# Mistral Document AI: OCR 4 on contracts
+# Document AI on Cloudera: accounts payable with Mistral OCR 4
 
-Evaluation and demo of [Mistral OCR 4](https://docs.mistral.ai/capabilities/document_ai/basic_ocr) (`mistral-ocr-4`) on
-legal contracts from the [CUAD](https://www.atticusprojectai.org/cuad) dataset.
+Supplier invoices land as PDFs in the governed data lake. [Mistral OCR 4](https://docs.mistral.ai/capabilities/document_ai/basic_ocr)
+reads them inside the environment and returns the fields as JSON, using a schema, plus layout blocks and word confidence.
+Impala joins every field against enterprise data in Iceberg (vendor master, purchase orders, goods receipts, payments).
+The result is a prioritized **action queue**. Each action links back to the exact spot on the page and to the record that
+triggered it.
 
-| File | What it does |
+The point of the demo: extraction alone is another silo, and enterprise data alone can't read a PDF. Together they produce
+an action with an audit trail.
+
+| OCR 4 capability | What it does in the demo |
 |---|---|
-| `test_mistral_api.py` | Checks the API key, lists available OCR models, makes one live OCR call |
-| `ocr_extract.py` | OCRs PDFs to markdown + raw JSON; scores text against CUAD's reference `.txt` files |
-| `contract_ai.py` | "Context" two ways: OCR 4 document annotations (schema + prompt → structured fields, scored against CUAD labels) and a chat model with a system prompt that reads OCR output via a tool |
-| `app.py` | Streamlit demo for stakeholders |
+| Schema mode (`document_annotation_format` + prompt) | Extracts the invoice fields and line items |
+| Layout blocks with bounding boxes | Click-to-evidence: each flag highlights its spot on the page |
+| Word confidence scores | Low-confidence key fields go to human review instead of payment |
+| Self-hostable in one container | The documents never leave the environment |
 
-## Setup
+## Layout
+
+| Path | What it does |
+|---|---|
+| `ap/generate.py` | Synthetic AP data from one seed: vendors, POs, receipts, payment history, invoice PDFs (5 layouts, scans, a 2-page invoice) with planted issues, plus `ground_truth.json` |
+| `ap/setup_lake.py` | Creates the Iceberg tables in `docai_ap`, loads the enterprise data, lands the batch PDFs in S3 |
+| `ap/pipeline.py` | PDF in S3 → OCR 4 (schema mode) → `extractions` with page/bbox/confidence → rules. Batch CLI and the live `ingest()` path |
+| `ap/rules.sql` | The joins that produce `exceptions`: bank mismatch, duplicate, unknown vendor, no PO, price over PO, qty over receipt, low confidence, discount window |
+| `ap/evidence.py` | Ties each extracted value to its OCR 4 block, line or table row, bounding box and word confidence |
+| `ap/evaluate.py` | Scores extraction and the action queue against the ground truth |
+| `app.py` | Streamlit app: action queue with evidence, live ingest, and "under the hood" views (OCR output, chat, tables, rules, accuracy) |
+| `deploy_app.py` | Creates or updates the Cloudera AI Application (`docai-ap`) and the "AP pipeline" Job |
+
+Settings are in `ap/config.py`, overridable by environment variable: S3 prefix, database, Impala connection,
+business date (`AP_AS_OF`) and review threshold (`AP_MIN_CONFIDENCE`).
+
+## Run on Cloudera AI
+
+Set `MISTRAL_API_KEY` as a project environment variable (Project Settings > Advanced) and restart your session.
 
 ```bash
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env   # add your Mistral API key
+python -m ap.generate --vendors 15 --seed 7   # data/ap/: PDFs, CSVs, ground truth (data/ is gitignored)
+python -m ap.setup_lake --reset               # Iceberg tables + PDFs in S3
+python -m ap.pipeline --pending               # OCR 4 + rules (or run the "AP pipeline" Job)
+python -m ap.evaluate                         # accuracy vs ground truth
+python deploy_app.py                          # Application + Job
 ```
 
-Download CUAD v1 and unzip it so the contracts are at `data/cuad/CUAD_v1/full_contract_pdf/`
-(with `full_contract_txt/` and `master_clauses.csv` alongside). You can also upload your own PDFs in the app.
+The app and the Job run on a Python 3.12 runtime and install `requirements.txt` on first start (`ensure_deps.py`).
 
-## Run
+## Demo flow
 
-```bash
-.venv/bin/python test_mistral_api.py          # connectivity check
-.venv/bin/python ocr_extract.py               # OCR two sample contracts -> outputs/ocr/
-.venv/bin/python contract_ai.py --n 8 --seed 42   # schema-only vs schema+prompt extraction accuracy
-.venv/bin/streamlit run app.py                # demo app
-```
-
-## The demo app
-
-Pick CUAD contracts (or upload PDFs) and run OCR 4. Results are cached in `outputs/ocr_cache/`, so replays are instant.
-
-- **Side-by-side**: page image with color-coded layout blocks next to the extracted markdown; low-confidence words highlighted
-- **Extracted fields**: OCR 4 document annotations with an editable prompt; each field has a supporting quote and is scored against CUAD's labels
-- **Ask the document**: `mistral-medium-latest` with a system prompt and a `read_document` tool (Mistral's OCR tool-usage cookbook pattern); answers cite pages
-- **Full text**, **Confidence**, **Layout & tables**, **vs. basic extraction**, **Raw JSON**
-
-## What "context" means for OCR 4
-
-- **Document annotations** are context for OCR 4 itself. `document_annotation_format` is a JSON schema whose field
-  descriptions act as instructions. `document_annotation_prompt` adds free-text guidance and requires a format. In the same
-  call that transcribes the document, OCR 4 returns `document_annotation`: JSON matching the schema.
-- **A system prompt** (as in the cookbook) goes to a chat model, not to OCR. The chat model calls OCR output as a tool and
-  answers from it.
-
-On 8 CUAD contracts the prompt was not tuned on, adding the prompt to the schema raised agreement with CUAD's labels from
-73% to 79%. The gain came mostly from normalized dates, renewal terms and notice periods. This is a single run on a small
-sample, so treat it as indicative.
+1. **Action queue**: 40 invoices processed, 9 planted issues found, 2 sent to review. Open the bank-change invoice (B021): the remit-to
+   account is highlighted on the page, next to the vendor master record that disagrees.
+2. **Human review**: B001 is a smudged fax. OCR 4 misread the invoice number (A05319 instead of A05519) but with low confidence,
+   so it went to a person instead of to payment. Confirm the value and the rules rerun.
+3. **Ingest an invoice**: pick a held-back sample (`data/ap/live/`), for example L043. It lands in S3, OCR 4 reads it, and the rules flag it
+   within seconds, using the same code as the batch Job.
+4. **Under the hood**: the OCR output, the schema and prompt, chat with the invoice, the Iceberg tables, the SQL rules, and the accuracy score.
+   **Remove live uploads** resets the demo.
