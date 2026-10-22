@@ -1,4 +1,4 @@
-"""The Document AI pipeline: PDF in S3 -> Mistral OCR 4 (schema mode) -> extractions with evidence -> rules.
+"""The Document AI pipeline: PDF in S3 -> Mistral OCR 4.1 (schema mode) -> extractions with evidence -> rules.
 
 Batch:  python -m ap.pipeline --pending      (what the Cloudera AI Job runs)
         python -m ap.pipeline --all          (reprocess everything)
@@ -11,13 +11,14 @@ import json
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from ap import lake
 from ap.config import AS_OF, DATA, DB, MIN_CONFIDENCE
 from ap.evidence import locate
-from ap.schema import ANNOTATION_FORMAT, HEADER_FIELDS, INVOICE_PROMPT, LINE_FIELDS, MONEY_FIELDS
+from ap.schema import ANNOTATION_FORMAT, DATE_FIELDS, HEADER_FIELDS, INVOICE_PROMPT, LINE_FIELDS, MONEY_FIELDS
 from ocr_extract import ocr_bytes
 from test_mistral_api import get_client
 
@@ -43,7 +44,7 @@ def pdf_bytes(doc: dict) -> bytes:
 
 
 def ocr_json(doc_id: str) -> dict:
-    """Raw OCR 4 response for a document (local cache, else the lake)."""
+    """Raw OCR 4.1 response for a document (local cache, else the lake)."""
     path = CACHE / f"{doc_id}.ocr.json"
     if not path.exists():
         CACHE.mkdir(parents=True, exist_ok=True)
@@ -62,7 +63,7 @@ def _fmt(field: str, v) -> str | None:
 
 
 def extract(doc: dict, client) -> tuple[dict, list[dict]]:
-    """OCR 4 call with the invoice schema; returns the raw response and one row per extracted field."""
+    """OCR 4.1 call with the invoice schema; returns the raw response and one row per extracted field."""
     start = time.perf_counter()
     resp = ocr_bytes(client, pdf_bytes(doc), confidence="word", annotation_format=ANNOTATION_FORMAT,
                      annotation_prompt=INVOICE_PROMPT)
@@ -166,8 +167,28 @@ def reset_uploads() -> int:
     return len(docs)
 
 
+def check_value(field: str, value: str) -> str:
+    """Normalize a reviewer's value, or raise ValueError when it can't be stored for this field: the rules cast
+    money fields to DECIMAL and dates to DATE, so a bad value would break every query over the views."""
+    value = value.strip()
+    if not value:
+        raise ValueError("Enter a value.")
+    if field in MONEY_FIELDS:
+        try:
+            return f"{Decimal(value.replace(',', '').replace('$', '')):.2f}"
+        except InvalidOperation:
+            raise ValueError(f"{field.replace('_', ' ').capitalize()} must be an amount, for example 2273.60.") from None
+    if field in DATE_FIELDS:
+        try:
+            return date.fromisoformat(value).isoformat()
+        except ValueError:
+            raise ValueError(f"{field.replace('_', ' ').capitalize()} must be a date as YYYY-MM-DD.") from None
+    return value
+
+
 def confirm_field(doc_id: str, field: str, value: str, reviewer: str) -> None:
     """Human review: record the confirmed value (confidence 1.0, model = reviewer) and rerun the rules."""
+    value = check_value(field, value)
     lake.execute(f"UPDATE {DB}.extractions SET field_value = {lake.lit(value)}, confidence = 1.0, "
                  f"model = {lake.lit('reviewed by ' + reviewer)}, extracted_at = now() "
                  f"WHERE doc_id = {lake.lit(doc_id)} AND field_name = {lake.lit(field)} AND line_no IS NULL")
@@ -186,7 +207,7 @@ def main() -> None:
         where = ("status = 'pending'" if args.pending else "TRUE" if args.all
                  else f"doc_id IN ({', '.join(map(lake.lit, args.doc))})")
         docs = documents(where)
-        print(f"Processing {len(docs)} documents with Mistral OCR 4")
+        print(f"Processing {len(docs)} documents with Mistral OCR 4.1")
         process(docs)
     print(f"Rules: {run_rules()} exceptions in {DB}.exceptions")
 

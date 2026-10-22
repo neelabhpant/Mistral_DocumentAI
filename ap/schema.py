@@ -1,4 +1,4 @@
-"""What OCR 4 extracts from an invoice (document annotation schema + prompt)."""
+"""What OCR 4.1 extracts from an invoice (document annotation schema + prompt)."""
 
 from mistralai.extra import response_format_from_pydantic_model
 from pydantic import BaseModel, Field

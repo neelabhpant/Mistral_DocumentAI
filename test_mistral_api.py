@@ -13,7 +13,7 @@ from mistralai.client import Mistral
 
 ROOT = Path(__file__).parent
 SAMPLE_PDFS = ROOT / "data/ap/pdfs"  # generated invoices (python -m ap.generate)
-OCR_MODEL = "mistral-ocr-4"
+OCR_MODEL = "mistral-ocr-4-1"  # OCR 4.0 retired 2026-09-30; mistral-ocr-4 is now an alias of 4.1
 
 
 def get_client() -> Mistral:

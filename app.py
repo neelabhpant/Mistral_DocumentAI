@@ -1,4 +1,4 @@
-"""Document AI on Cloudera: accounts payable invoices read by Mistral OCR 4, checked against governed
+"""Document AI on Cloudera: accounts payable invoices read by Mistral OCR 4.1, checked against governed
 enterprise data in Iceberg, and turned into a prioritized action queue with click-to-evidence.
 
 Run: streamlit run app.py   (on Cloudera AI: launch_app.py)
@@ -248,13 +248,13 @@ def action_queue() -> None:
     processed = int((docs["status"] == "processed").sum()) if not docs.empty else 0
 
     st.markdown(brand.header("Invoices that need action",
-                             "Supplier invoices read by Mistral OCR 4, checked against governed data in Cloudera."),
+                             "Supplier invoices read by Mistral OCR 4.1, checked against governed data in Cloudera."),
                 unsafe_allow_html=True)
     risk = exc[exc["priority"] <= 3] if not exc.empty else exc
     savings = exc[exc["rule_code"] == "DISCOUNT_WINDOW"] if not exc.empty else exc
     review = exc[exc["rule_code"] == "LOW_CONFIDENCE"] if not exc.empty else exc
     s1, s2, s3 = st.columns(3)
-    s1.markdown(brand.step(1, "Read", "Mistral OCR 4", f"Extracted {n_fields:,} fields from {processed} invoice PDFs "
+    s1.markdown(brand.step(1, "Read", "Mistral OCR 4.1", f"Extracted {n_fields:,} fields from {processed} invoice PDFs "
                            "in S3, inside this environment."), unsafe_allow_html=True)
     s2.markdown(brand.step(2, "Join", "Cloudera", "Every field checked against the vendor master, POs, goods receipts "
                            "and payments in Iceberg (Impala)."), unsafe_allow_html=True)
@@ -335,7 +335,7 @@ def action_queue() -> None:
             st.dataframe(
                 pd.DataFrame({
                     "": [c["what"] for c in comp],
-                    "On the invoice (OCR 4)": [c["invoice"] for c in comp],
+                    "On the invoice (OCR 4.1)": [c["invoice"] for c in comp],
                     "In Cloudera": [c["record"] for c in comp],
                     "Table": [f"{DB}.{c['source']}" if c["source"] else "" for c in comp],
                     "Match": ["yes" if c["ok"] else "NO" for c in comp],
@@ -349,11 +349,16 @@ def action_queue() -> None:
                             f"{e['evidence_field'].replace('_', ' ')}.")
                 value = st.text_input("Confirmed value", f.get("field_value") or "")
                 if st.form_submit_button("Confirm and re-check", type="primary"):
-                    with st.spinner("Saving the reviewed value and rerunning the rules…"):
-                        pipeline.confirm_field(e["doc_id"], e["evidence_field"], value.strip(), REVIEWER)
-                    refresh()
-                    st.session_state["focus"] = (e["doc_id"], None)
-                    st.rerun()
+                    try:
+                        clean = pipeline.check_value(e["evidence_field"], value)
+                    except ValueError as err:
+                        st.error(str(err))
+                    else:
+                        with st.spinner("Saving the reviewed value and rerunning the rules…"):
+                            pipeline.confirm_field(e["doc_id"], e["evidence_field"], clean, REVIEWER)
+                        refresh()
+                        st.session_state["focus"] = (e["doc_id"], None)
+                        st.rerun()
         others = exc[(exc["doc_id"] == e["doc_id"]) & (exc.index != exc.index[i])]
         if not others.empty:
             st.caption("Also on this invoice: " + ", ".join(explain.RULES.get(r, (r,))[0] for r in others["rule_code"]))
@@ -373,7 +378,7 @@ def action_queue() -> None:
 
 def ingest_view() -> None:
     st.markdown(brand.header("Ingest an invoice",
-                             "A new invoice lands in governed S3, Mistral OCR 4 reads it inside the environment, and the "
+                             "A new invoice lands in governed S3, Mistral OCR 4.1 reads it inside the environment, and the "
                              "same rules check it against enterprise data. The same code runs in the batch Job."),
                 unsafe_allow_html=True)
     samples = sorted((DATA / "live").glob("*.pdf"))
@@ -397,9 +402,9 @@ def ingest_view() -> None:
             doc_id = pipeline.land(data, name)
             times["Land in S3"] = time.perf_counter() - t
             t = time.perf_counter()
-            st.write(f"Mistral OCR 4 is reading `{doc_id}` with the invoice schema…")
+            st.write(f"Mistral OCR 4.1 is reading `{doc_id}` with the invoice schema…")
             pipeline.process(pipeline.documents(f"doc_id = {lake.lit(doc_id)}"))
-            times["OCR 4 + evidence"] = time.perf_counter() - t
+            times["OCR 4.1 + evidence"] = time.perf_counter() - t
             t = time.perf_counter()
             st.write("Joining every field against vendors, POs, receipts and payments in Iceberg…")
             pipeline.run_rules()
@@ -435,7 +440,7 @@ def architecture_svg() -> str:
 
 
 def under_the_hood() -> None:
-    st.markdown(brand.header("Under the hood", "What OCR 4 returned, where the data lives, and how well it scores."),
+    st.markdown(brand.header("Under the hood", "What OCR 4.1 returned, where the data lives, and how well it scores."),
                 unsafe_allow_html=True)
     t_arch, t_doc, t_lake, t_eval = st.tabs(["Architecture", "One document", "Data lake & rules", "Accuracy"], key="uth_tab")
     with t_arch:
@@ -501,8 +506,8 @@ def document_detail(docs: pd.DataFrame) -> None:
             show_md(highlighted_markdown(page, MIN_CONFIDENCE))
     with t_fields:
         fx = extractions(doc_id)
-        st.markdown("**Context sent to OCR 4:** a JSON schema (`document_annotation_format`, each field description is an "
-                    "instruction) and a prompt (`document_annotation_prompt`). Page, box and confidence come from OCR 4's "
+        st.markdown("**Context sent to OCR 4.1:** a JSON schema (`document_annotation_format`, each field description is an "
+                    "instruction) and a prompt (`document_annotation_prompt`). Page, box and confidence come from OCR 4.1's "
                     "layout blocks and word scores.")
         st.dataframe(
             fx[["field_name", "line_no", "field_value", "confidence", "page", "model"]].rename(columns={
@@ -543,7 +548,7 @@ def chat(doc_id: str, resp) -> None:
     system = SYSTEM_PROMPT.format(documents=", ".join(docs))
     if st.session_state.get("chat_id") != doc_id:
         st.session_state.update(chat_id=doc_id, chat_messages=[{"role": "system", "content": system}], chat_log=[])
-    st.markdown(f"`{CHAT_MODEL}` with a system prompt and a `read_document` tool that returns OCR 4's text for the "
+    st.markdown(f"`{CHAT_MODEL}` with a system prompt and a `read_document` tool that returns OCR 4.1's text for the "
                 "invoice (Mistral's OCR tool-usage cookbook pattern).")
     with st.expander("What the assistant was told (system prompt + tool)"):
         st.code(system, language="markdown", wrap_lines=True)

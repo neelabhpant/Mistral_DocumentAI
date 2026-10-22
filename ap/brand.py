@@ -24,7 +24,7 @@ TONE = {"risk": "#C8102E", "review": "#E59400", "opportunity": "#17784E"}
 TONE_TEXT = {"risk": "#FFFFFF", "review": MISTRAL_INK, "opportunity": "#FFFFFF"}
 EVIDENCE = "#2463B0"  # supporting evidence boxes: blue reads clearly next to the status color
 
-# OCR 4 block types on the layout view. Categorical slots in fixed order; structural/peripheral types share a
+# OCR 4.1 block types on the layout view. Categorical slots in fixed order; structural/peripheral types share a
 # neutral gray and are told apart by their box label.
 GRAY = "#8A8984"
 BLOCK_COLORS = {

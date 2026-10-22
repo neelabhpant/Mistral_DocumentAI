@@ -32,7 +32,7 @@ TABLES = {
     "documents": ("Invoice PDFs landed in S3: one row per file", """
         doc_id STRING, file_name STRING, s3_uri STRING, sha256 STRING, size_bytes BIGINT, source STRING,
         ingested_at TIMESTAMP, status STRING, processed_at TIMESTAMP"""),
-    "extractions": ("Fields extracted by Mistral OCR 4, with page, bounding box and confidence", """
+    "extractions": ("Fields extracted by Mistral OCR 4.1, with page, bounding box and confidence", """
         doc_id STRING, field_name STRING, line_no INT, field_value STRING, confidence DOUBLE, page INT, bbox STRING,
         quote STRING, model STRING, extracted_at TIMESTAMP"""),
     "exceptions": ("Action queue: extracted fields joined against enterprise data", """

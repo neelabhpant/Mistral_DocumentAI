@@ -1,4 +1,4 @@
-"""Tie each extracted value back to the page: which OCR 4 block (and line / table row) it came from, its
+"""Tie each extracted value back to the page: which OCR 4.1 block (and line / table row) it came from, its
 bounding box, and the lowest word confidence across it. Works on the raw OCR response as a dict, so it
 runs the same on fresh responses and on JSON read back from the lake."""
 

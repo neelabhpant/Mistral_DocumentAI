@@ -1,5 +1,5 @@
 """Ask questions about invoices: a Mistral chat model with a system prompt and a read_document tool that
-returns OCR 4's text (the tool-usage pattern from Mistral's OCR cookbook)."""
+returns OCR 4.1's text (the tool-usage pattern from Mistral's OCR cookbook)."""
 
 import json
 
@@ -8,7 +8,7 @@ CHAT_MODEL = "mistral-medium-latest"
 SYSTEM_PROMPT = """You are an accounts payable assistant. You answer questions about the supplier invoices the user has loaded.
 
 # READ DOCUMENT INSTRUCTIONS
-You can read an invoice with the `read_document` tool. It returns the invoice's full text, extracted by Mistral OCR 4, as markdown with a "### Page N" heading per page. Call it before answering any question about an invoice's content; read every invoice the question involves.
+You can read an invoice with the `read_document` tool. It returns the invoice's full text, extracted by Mistral OCR 4.1, as markdown with a "### Page N" heading per page. Call it before answering any question about an invoice's content; read every invoice the question involves.
 
 # ANSWERING RULES
 - Answer only from the invoice text. If the invoice does not say, answer "Not stated on the invoice."

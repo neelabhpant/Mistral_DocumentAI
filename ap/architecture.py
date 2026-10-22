@@ -39,7 +39,7 @@ SOURCES = [  # (glyph, title, lines)
 SERVICES = [
     ("ingest", "Ingest", "cloudera", ["nifi"], "Cloudera DataFlow (NiFi)",
      ["Watches sources and lands PDFs", "Triggers processing per document", "Replicates ERP tables"]),
-    ("read", "Read", "mistral", ["mistral"], "Mistral OCR 4",
+    ("read", "Read", "mistral", ["mistral"], "Mistral OCR 4.1",
      ["Self-hosted container", "Schema-mode fields + line items", "Bounding boxes, word confidence"]),
     ("join", "Join", "cloudera", ["impala", "trino"], "Impala or Trino",
      ["SQL rules over Iceberg", "Every field vs vendor master,", "POs, receipts, payments"]),
@@ -64,7 +64,7 @@ GOVERN = [  # (logo, name, description)
 STEPS = [
     "Arrive: an invoice reaches email, the portal, a scanner or SFTP.",
     "Land: NiFi writes the PDF to the governed landing zone.",
-    "Read: Mistral OCR 4 extracts fields, layout and confidence inside the environment.",
+    "Read: Mistral OCR 4.1 extracts fields, layout and confidence inside the environment.",
     "Store: every field lands in Iceberg with its page, bounding box and confidence.",
     "Join: SQL rules check each field against the vendor master, POs, receipts and payments.",
     "Act: the queue ranks actions; low-confidence fields go to a person; results flow back to the ERP.",

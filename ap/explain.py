@@ -15,7 +15,7 @@ RULES = {  # label, short description of the join, tone
     "NO_PO": ("No matching PO", "invoice PO vs purchase orders", "risk"),
     "PRICE_OVER_PO": ("Price above PO", "invoice line price vs PO line price", "risk"),
     "QTY_OVER_RECEIPT": ("Billed more than received", "invoice line qty vs goods receipts", "risk"),
-    "LOW_CONFIDENCE": ("Needs human review", "OCR 4 word confidence below threshold", "review"),
+    "LOW_CONFIDENCE": ("Needs human review", "OCR 4.1 word confidence below threshold", "review"),
     "DISCOUNT_WINDOW": ("Pay now: discount", "payment terms vs today's date", "opportunity"),
 }
 SECONDARY = {
