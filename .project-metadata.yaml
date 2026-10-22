@@ -11,28 +11,21 @@ prototype_version: 1.0
 date: "2026-10-22"
 
 environment_variables:
+  # Not marked required: the Configure Project form rejects values typed into required fields ("Missing required
+  # environment variables"). Blank values fall back to the defaults in ap/config.py, and the setup job's preflight
+  # check stops with an explanation if MISTRAL_API_KEY is missing.
   MISTRAL_API_KEY:
     default: ""
-    description: >-
-      Mistral API key with access to mistral-ocr-4-1 (console.mistral.ai). Stored as a project environment variable.
-    required: true
+    description: "Required. Mistral API key with access to mistral-ocr-4-1 (console.mistral.ai). Stored as a project environment variable."
   AP_IMPALA_CONNECTION:
     default: "default-impala-aws"
-    description: >-
-      Name of an Impala data connection (a CDW Impala Virtual Warehouse) in this environment. If the name is wrong,
-      the setup job lists the available ones.
-    required: true
+    description: "Name of an Impala data connection (a CDW Impala Virtual Warehouse) in this environment. If the name is wrong, the setup job lists the available ones."
   AP_DB:
     default: "docai_ap"
-    description: >-
-      Database for the Iceberg tables. Setup drops and recreates its tables: if someone else already runs this demo
-      in this environment, choose another name (for example docai_ap_<your name>).
-    required: true
+    description: "Database for the Iceberg tables. Setup drops and recreates its tables: if someone else already runs this demo in this environment, choose another name (for example docai_ap_<your name>)."
   AP_S3_ROOT:
     default: ""
-    description: >-
-      Data lake folder for the invoice PDFs and raw OCR output. Leave blank for <data lake bucket>/user/<your user>/docai.
-    required: false
+    description: "Data lake folder for the invoice PDFs and raw OCR output. Leave blank for <data lake bucket>/user/<your user>/docai."
 
 runtimes:
   - editor: PBJ Workbench
