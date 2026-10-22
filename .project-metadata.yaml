@@ -1,0 +1,85 @@
+name: "Document AI: accounts payable with Mistral OCR 4.1"
+description: >-
+  Supplier invoices land as PDFs in the governed data lake. Mistral OCR 4.1 reads them (schema-mode fields, layout
+  blocks with bounding boxes, word confidence), every field lands in Iceberg, and SQL rules in Impala join it against
+  the vendor master, purchase orders, goods receipts and payments. The result is a prioritized action queue in a
+  Streamlit app, where each action links back to the exact spot on the page. Ships with synthetic AP data
+  (40 batch invoices with planted issues, plus held-back samples for live ingest).
+author: Neelabh Pant
+specification_version: 1.0
+prototype_version: 1.0
+date: "2026-10-22"
+
+environment_variables:
+  MISTRAL_API_KEY:
+    default: ""
+    description: >-
+      Mistral API key with access to mistral-ocr-4-1 (console.mistral.ai). Stored as a project environment variable.
+    required: true
+  AP_IMPALA_CONNECTION:
+    default: "default-impala-aws"
+    description: >-
+      Name of an Impala data connection (a CDW Impala Virtual Warehouse) in this environment. If the name is wrong,
+      the setup job lists the available ones.
+    required: true
+  AP_DB:
+    default: "docai_ap"
+    description: >-
+      Database for the Iceberg tables. Setup drops and recreates its tables: if someone else already runs this demo
+      in this environment, choose another name (for example docai_ap_<your name>).
+    required: true
+  AP_S3_ROOT:
+    default: ""
+    description: >-
+      Data lake folder for the invoice PDFs and raw OCR output. Leave blank for <data lake bucket>/user/<your user>/docai.
+    required: false
+
+runtimes:
+  - editor: PBJ Workbench
+    kernel: Python 3.12
+    edition: Standard
+
+tasks:
+  - type: create_job
+    name: "AP setup: tables and invoices"
+    entity_label: ap_setup
+    script: setup_demo.py
+    kernel: python3
+    cpu: 2
+    memory: 4
+    timeout: 30
+    short_summary: Create the setup job
+
+  - type: run_job
+    entity_label: ap_setup
+    short_summary: Install requirements, check access, create Iceberg tables and land invoice PDFs in the data lake
+    long_summary: >-
+      Installs requirements.txt, checks the Mistral key, the Impala connection and data lake access, creates the
+      Iceberg tables, loads the synthetic enterprise data (vendors, POs, goods receipts, payments) and lands the 40
+      batch invoice PDFs in the data lake.
+
+  - type: create_job
+    name: "AP pipeline: process new invoices"
+    entity_label: ap_pipeline
+    script: run_pipeline.py
+    kernel: python3
+    cpu: 1
+    memory: 4
+    timeout: 60
+    short_summary: Create the pipeline job (rerun it, schedule it or trigger it from NiFi for new invoices)
+
+  - type: run_job
+    entity_label: ap_pipeline
+    short_summary: Read the invoices with Mistral OCR 4.1 and run the rules
+    long_summary: >-
+      Sends each pending invoice to Mistral OCR 4.1 in schema mode, stores every field in Iceberg with its page,
+      bounding box and confidence, and runs the SQL rules that build the action queue.
+
+  - type: start_application
+    name: "Document AI: accounts payable (Cloudera + Mistral OCR 4.1)"
+    subdomain: docai-ap
+    script: launch_app.py
+    kernel: python3
+    cpu: 1
+    memory: 4
+    short_summary: Start the Streamlit application

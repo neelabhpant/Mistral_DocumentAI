@@ -2,9 +2,16 @@
 .env
 token.txt
 
-# Data and generated output (python -m ap.generate recreates data/ap)
-data/
+# Synthetic data in data/ap ships with the repo (an AMP launch loads it); the pipeline's local cache does not
+data/ap/cache/
 outputs/
+
+# Internal material, not for the public repo
+docs/reference/
+docs/deck/
+docs/demo/
+docs/response.md
+docs/Cloudera & Mistral 201 Use Case Outline Deck (1).pdf
 
 # Python / OS
 .venv/

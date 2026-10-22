@@ -1,0 +1,163 @@
+po_number,line_no,sku,description,qty,unit_price
+PO-4503,1,OS-1315,"Gel pens, blue, box of 12",3,11.25
+PO-4503,2,OS-1101,"Copy paper, letter, 10-ream case",8,48.9
+PO-4503,3,OS-1240,"Toner cartridge, black, high yield",24,132.0
+PO-4503,4,OS-1402,"Hanging file folders, box of 25",5,18.4
+PO-4505,1,OS-1402,"Hanging file folders, box of 25",1,18.4
+PO-4505,2,OS-1101,"Copy paper, letter, 10-ream case",24,48.9
+PO-4505,3,OS-1315,"Gel pens, blue, box of 12",2,11.25
+PO-4508,1,TF-2455,Threaded rod 3/8-16 x 6ft,3,9.85
+PO-4508,2,TF-2390,"Flat washer M10, box of 500",1,17.95
+PO-4508,3,TF-2301,"Socket cap screw M6x20, box of 100",12,22.1
+PO-4508,4,TF-2510,"Rivet nut M8, box of 50",4,41.2
+PO-4509,1,TF-2301,"Socket cap screw M6x20, box of 100",5,22.1
+PO-4509,2,TF-2390,"Flat washer M10, box of 500",6,17.95
+PO-4509,3,TF-2234,"Flange nut M10, box of 200",1,29.5
+PO-4513,1,TF-2234,"Flange nut M10, box of 200",24,29.5
+PO-4513,2,TF-2390,"Flat washer M10, box of 500",10,17.95
+PO-4513,3,TF-2210,"Hex bolt M10x40, zinc, box of 100",12,36.8
+PO-4513,4,TF-2301,"Socket cap screw M6x20, box of 100",8,22.1
+PO-4513,5,TF-2510,"Rivet nut M8, box of 50",12,41.2
+PO-4521,1,QE-3348,Junction box 4in square,10,3.95
+PO-4521,2,QE-3170,Breaker 20A single pole,3,14.6
+PO-4521,3,QE-3222,LED high-bay fixture 150W,3,189.0
+PO-4521,4,QE-3105,"THHN wire 12 AWG, 500ft spool",5,118.0
+PO-4530,1,QE-3170,Breaker 20A single pole,6,14.6
+PO-4530,2,QE-3222,LED high-bay fixture 150W,8,189.0
+PO-4530,3,QE-3401,"Motor starter, 3-phase, 10HP",2,412.0
+PO-4530,4,QE-3105,"THHN wire 12 AWG, 500ft spool",10,118.0
+PO-4531,1,BP-4055,Stretch film 18in x 1500ft,20,22.4
+PO-4531,2,BP-4160,"Void fill paper, 1000ft roll",1,44.9
+PO-4534,1,BP-4250,"Edge protector 2x2x36, bundle of 100",6,39.0
+PO-4534,2,BP-4203,"Packing tape 2in, case of 36",10,58.2
+PO-4534,3,BP-4160,"Void fill paper, 1000ft roll",3,44.9
+PO-4535,1,BP-4250,"Edge protector 2x2x36, bundle of 100",24,39.0
+PO-4535,2,BP-4203,"Packing tape 2in, case of 36",20,58.2
+PO-4535,3,BP-4055,Stretch film 18in x 1500ft,24,22.4
+PO-4535,4,BP-4102,"Pallet, heat-treated 48x40",24,16.5
+PO-4535,5,BP-4010,"Corrugated box 18x12x12, bundle of 25",4,31.75
+PO-4540,1,SP-5199,"First aid kit, 50-person",24,89.0
+PO-4540,2,SP-5164,"Ear plugs, box of 200 pairs",4,34.4
+PO-4542,1,SP-5199,"First aid kit, 50-person",2,89.0
+PO-4542,2,SP-5164,"Ear plugs, box of 200 pairs",10,34.4
+PO-4545,1,SP-5120,"Hi-vis vest class 2, 10-pack",1,52.0
+PO-4545,2,SP-5199,"First aid kit, 50-person",20,89.0
+PO-4545,3,SP-5012,"Safety glasses, clear, box of 12",24,27.6
+PO-4545,4,SP-5040,"Cut-resistant gloves A4, 12 pairs",24,64.8
+PO-4545,5,SP-5088,"Hard hat, type I, white",4,18.25
+PO-4547,1,KS-6118,Parafilm 4in x 125ft,12,41.7
+PO-4547,2,KS-6001,"Nitrile gloves M, box of 100",4,12.8
+PO-4547,3,KS-6055,"Weighing boats, medium, 500",5,24.1
+PO-4547,4,KS-6033,"Lab wipes, box of 280",2,6.3
+PO-4547,5,KS-6078,"Isopropyl alcohol 70%, 4L",10,22.6
+PO-4547,6,KS-6012,"Pipette tips 200uL, rack of 96",1,9.4
+PO-4547,7,KS-6027,Graduated cylinder 100mL,5,14.2
+PO-4547,8,KS-6101,"Thermometer, digital probe",10,46.25
+PO-4547,9,KS-6093,Magnetic stir bar set,2,33.8
+PO-4547,10,KS-6041,"Sample vials 20mL, pack of 100",12,38.9
+PO-4547,11,KS-6062,"Centrifuge tubes 50mL, 500",10,96.0
+PO-4547,12,KS-6019,"Beaker, borosilicate 600mL",5,7.65
+PO-4547,13,KS-6070,"Lab coat, white, size L",8,28.5
+PO-4547,14,KS-6085,"Petri dishes 100mm, 500",4,71.4
+PO-4547,15,KS-6048,"pH buffer solution 7.00, 500mL",4,19.75
+PO-4547,16,KS-6110,"Wash bottle 500mL, 6-pack",2,15.9
+PO-4554,1,KS-6001,"Nitrile gloves M, box of 100",10,12.8
+PO-4554,2,KS-6055,"Weighing boats, medium, 500",8,24.1
+PO-4554,3,KS-6078,"Isopropyl alcohol 70%, 4L",5,22.6
+PO-4561,1,AF-7090,Restroom supply restock,5,312.5
+PO-4561,2,AF-7005,"Janitorial service, monthly",5,2450.0
+PO-4561,3,AF-7114,"Carpet extraction, per room",6,95.0
+PO-4561,4,AF-7062,"Window cleaning, exterior",2,640.0
+PO-4566,1,AF-7005,"Janitorial service, monthly",24,2450.0
+PO-4566,2,AF-7062,"Window cleaning, exterior",3,640.0
+PO-4574,1,NH-8120,"Pleated filter 20x25x2 MERV 13, case of 12",1,96.0
+PO-4574,2,NH-8231,Contactor 2-pole 40A,8,26.8
+PO-4574,3,NH-8155,Condenser fan motor 1/3HP,10,168.0
+PO-4574,4,NH-8190,Capacitor 45/5 MFD,20,21.4
+PO-4574,5,NH-8302,"Thermostat, programmable",3,74.5
+PO-4576,1,NH-8190,Capacitor 45/5 MFD,4,21.4
+PO-4576,2,NH-8302,"Thermostat, programmable",5,74.5
+PO-4576,3,NH-8231,Contactor 2-pole 40A,10,26.8
+PO-4576,4,NH-8277,"Refrigerant R-410A, 25lb",12,245.0
+PO-4579,1,NH-8277,"Refrigerant R-410A, 25lb",8,245.0
+PO-4579,2,NH-8155,Condenser fan motor 1/3HP,3,168.0
+PO-4579,3,NH-8231,Contactor 2-pole 40A,12,26.8
+PO-4579,4,NH-8302,"Thermostat, programmable",4,74.5
+PO-4579,5,NH-8190,Capacitor 45/5 MFD,4,21.4
+PO-4583,1,IV-9315,Deburring tool kit,8,31.6
+PO-4583,2,IV-9233,Grinding wheel 7in x 1/4in,8,12.95
+PO-4588,1,IV-9270,Torque wrench 1/2in drive,12,214.0
+PO-4588,2,IV-9188,"Cutting fluid, 5 gal",12,87.5
+PO-4588,3,IV-9150,"Drill bit set, cobalt, 29pc",24,129.0
+PO-4588,4,IV-9315,Deburring tool kit,4,31.6
+PO-4596,1,IV-9150,"Drill bit set, cobalt, 29pc",8,129.0
+PO-4596,2,IV-9104,Carbide end mill 1/2in 4-flute,10,58.4
+PO-4604,1,LP-1012,"Laptop, 14in, 32GB RAM",3,1489.0
+PO-4604,2,LP-1048,"27in monitor, USB-C",12,329.0
+PO-4604,3,LP-1175,Wireless access point,24,248.0
+PO-4613,1,LP-1048,"27in monitor, USB-C",24,329.0
+PO-4613,2,LP-1175,Wireless access point,5,248.0
+PO-4613,3,LP-1012,"Laptop, 14in, 32GB RAM",3,1489.0
+PO-4622,1,LP-1175,Wireless access point,5,248.0
+PO-4622,2,LP-1210,"Managed services, monthly per seat",4,85.0
+PO-4622,3,LP-1048,"27in monitor, USB-C",20,329.0
+PO-4622,4,LP-1133,Network switch 24-port PoE,1,612.0
+PO-4623,1,HU-1402,"Winter jacket, insulated",8,86.0
+PO-4623,2,HU-1325,"Work pants, khaki",24,29.75
+PO-4623,3,HU-1301,"Work shirt, navy, embroidered",5,24.5
+PO-4630,1,HU-1325,"Work pants, khaki",10,29.75
+PO-4630,2,HU-1377,"Uniform rental, weekly per employee",1,14.2
+PO-4630,3,HU-1402,"Winter jacket, insulated",6,86.0
+PO-4630,4,HU-1301,"Work shirt, navy, embroidered",8,24.5
+PO-4635,1,HU-1377,"Uniform rental, weekly per employee",4,14.2
+PO-4635,2,HU-1325,"Work pants, khaki",4,29.75
+PO-4635,3,HU-1402,"Winter jacket, insulated",10,86.0
+PO-4638,1,WF-1410,"LTL freight, Toledo to Chicago",1,685.0
+PO-4638,2,WF-1433,Liftgate delivery,20,75.0
+PO-4638,3,WF-1488,"Full truckload, regional",3,2150.0
+PO-4638,4,WF-1512,"Detention, per hour",8,85.0
+PO-4638,5,WF-1460,Fuel surcharge,1,112.4
+PO-4644,1,WF-1433,Liftgate delivery,1,75.0
+PO-4644,2,WF-1512,"Detention, per hour",5,85.0
+PO-4644,3,WF-1460,Fuel surcharge,24,112.4
+PO-4644,4,WF-1488,"Full truckload, regional",8,2150.0
+PO-4653,1,PW-1520,"Cooling tower chemical treatment, monthly",8,780.0
+PO-4653,2,PW-1548,"Water softener salt, 50lb",2,9.8
+PO-4653,3,PW-1601,RO membrane cartridge,1,268.0
+PO-4653,4,PW-1575,Boiler water test kit,10,145.0
+PO-4653,5,PW-1630,"Service visit, technician",4,195.0
+PO-4659,1,PW-1548,"Water softener salt, 50lb",10,9.8
+PO-4659,2,PW-1601,RO membrane cartridge,2,268.0
+PO-4659,3,PW-1520,"Cooling tower chemical treatment, monthly",1,780.0
+PO-4659,4,PW-1630,"Service visit, technician",5,195.0
+PO-4659,5,PW-1575,Boiler water test kit,4,145.0
+PO-4667,1,CP-1812,"Label rolls, thermal 4x6, case of 12",1,64.5
+PO-4667,2,CP-1705,"Safety signage, aluminum 10x14",4,18.6
+PO-4673,1,CP-1733,"Floor marking tape, 2in x 100ft",3,27.4
+PO-4673,2,CP-1788,"Banner, vinyl 3x8ft",20,92.0
+PO-4673,3,CP-1705,"Safety signage, aluminum 10x14",4,18.6
+PO-4673,4,CP-1760,"Business cards, box of 500",6,39.0
+PO-4673,5,CP-1812,"Label rolls, thermal 4x6, case of 12",6,64.5
+PO-4676,1,CP-1705,"Safety signage, aluminum 10x14",12,18.6
+PO-4676,2,CP-1788,"Banner, vinyl 3x8ft",12,92.0
+PO-4683,1,MC-1902,Air filter element,10,48.3
+PO-4683,2,MC-1981,Air hose 3/8in x 50ft,3,34.75
+PO-4683,3,MC-2010,Preventive maintenance visit,4,425.0
+PO-4689,1,MC-1957,"Quick coupler, 1/2in",5,11.2
+PO-4689,2,MC-2034,Pressure regulator,20,66.4
+PO-4695,1,MC-1930,"Compressor oil, synthetic, 5 gal",3,189.0
+PO-4695,2,MC-2034,Pressure regulator,5,66.4
+PO-4695,3,MC-2010,Preventive maintenance visit,20,425.0
+PO-4702,1,KS-6033,"Lab wipes, box of 280",3,6.3
+PO-4702,2,KS-6078,"Isopropyl alcohol 70%, 4L",8,22.6
+PO-4702,3,KS-6062,"Centrifuge tubes 50mL, 500",5,96.0
+PO-4702,4,KS-6012,"Pipette tips 200uL, rack of 96",8,9.4
+PO-4702,5,KS-6110,"Wash bottle 500mL, 6-pack",5,15.9
+PO-4705,1,TF-2234,"Flange nut M10, box of 200",2,29.5
+PO-4705,2,TF-2210,"Hex bolt M10x40, zinc, box of 100",2,36.8
+PO-4705,3,TF-2390,"Flat washer M10, box of 500",8,17.95
+PO-4705,4,TF-2455,Threaded rod 3/8-16 x 6ft,20,9.85
+PO-4705,5,TF-2510,"Rivet nut M8, box of 50",6,41.2
+PO-4707,1,OS-1240,"Toner cartridge, black, high yield",5,132.0
+PO-4707,2,OS-1315,"Gel pens, blue, box of 12",12,11.25
+PO-4707,3,OS-1588,"Desk organizer, steel mesh",3,24.75

@@ -12,7 +12,7 @@ import os
 
 import cmlapi
 
-NAME = "Document AI: accounts payable (Cloudera + Mistral OCR 4)"
+NAME = "Document AI: accounts payable (Cloudera + Mistral OCR 4.1)"
 SUBDOMAIN = "docai-ap"
 OLD_SUBDOMAINS = {"contract-ai"}  # earlier name of the same Application
 JOB_NAME = "AP pipeline: process new invoices"
@@ -29,16 +29,18 @@ def latest_runtime(client: cmlapi.CMLServiceApi) -> str:
 
 def deploy_app(client, project_id: str, runtime: str) -> None:
     apps = client.list_applications(project_id, page_size=100).applications
-    app = next((a for a in apps if a.subdomain == SUBDOMAIN), None) or next(
+    # by name too: an AMP launch randomizes the subdomain (docai-ap-xxxx)
+    app = next((a for a in apps if a.subdomain == SUBDOMAIN or a.name == NAME), None) or next(
         (a for a in apps if a.subdomain in OLD_SUBDOMAINS), None)
     if app:
         try:  # restart only works on a live run; a failed/stopped app must be stopped first
             client.stop_application(project_id, app.id)
         except cmlapi.rest.ApiException:
             pass
+        subdomain = SUBDOMAIN if app.subdomain in OLD_SUBDOMAINS else app.subdomain
         client.update_application(
-            cmlapi.Application(name=NAME, subdomain=SUBDOMAIN, runtime_identifier=runtime,
-                               description="Invoices read by Mistral OCR 4, checked against Iceberg data, turned into actions",
+            cmlapi.Application(name=NAME, subdomain=subdomain, runtime_identifier=runtime,
+                               description="Invoices read by Mistral OCR 4.1, checked against Iceberg data, turned into actions",
                                environment="{}"),
             project_id, app.id)
         client.restart_application(project_id, app.id)
@@ -47,11 +49,12 @@ def deploy_app(client, project_id: str, runtime: str) -> None:
         app = client.create_application(
             cmlapi.CreateApplicationRequest(
                 name=NAME, subdomain=SUBDOMAIN, script="launch_app.py", runtime_identifier=runtime,
-                description="Invoices read by Mistral OCR 4, checked against Iceberg data, turned into actions",
+                description="Invoices read by Mistral OCR 4.1, checked against Iceberg data, turned into actions",
                 cpu=CPU, memory=MEMORY_GB),
             project_id)
+        subdomain = app.subdomain
         print(f"Created application {app.id}")
-    print(f"App URL: https://{SUBDOMAIN}.{os.environ['CDSW_DOMAIN']}")
+    print(f"App URL: https://{subdomain}.{os.environ['CDSW_DOMAIN']}")
 
 
 def deploy_job(client, project_id: str, runtime: str) -> None:

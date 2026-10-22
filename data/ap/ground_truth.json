@@ -1,0 +1,2463 @@
+{
+  "as_of": "2026-10-08",
+  "invoices": {
+    "B029": {
+      "doc_id": "B029",
+      "vendor_id": "V001",
+      "invoice_number": "INV-01104",
+      "invoice_date": "2026-09-24",
+      "po_number": "PO-4503",
+      "lines": [
+        {
+          "sku": "OS-1315",
+          "description": "Gel pens, blue, box of 12",
+          "qty": 3,
+          "unit_price": 11.25,
+          "amount": 33.75
+        },
+        {
+          "sku": "OS-1101",
+          "description": "Copy paper, letter, 10-ream case",
+          "qty": 8,
+          "unit_price": 48.9,
+          "amount": 391.2
+        },
+        {
+          "sku": "OS-1240",
+          "description": "Toner cartridge, black, high yield",
+          "qty": 24,
+          "unit_price": 132.0,
+          "amount": 3168.0
+        },
+        {
+          "sku": "OS-1402",
+          "description": "Hanging file folders, box of 25",
+          "qty": 5,
+          "unit_price": 18.4,
+          "amount": 92.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "081924865",
+      "account_number": "48648925713",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B029_V001_INV-01104.pdf",
+      "vendor_name": "Corvane Office Supply LLC",
+      "due_date": "2026-10-24",
+      "subtotal": 3684.95,
+      "tax": 0.0,
+      "total": 3684.95,
+      "expected_exceptions": []
+    },
+    "B005": {
+      "doc_id": "B005",
+      "vendor_id": "V001",
+      "invoice_number": "INV-01114",
+      "invoice_date": "2026-09-01",
+      "po_number": "PO-4505",
+      "lines": [
+        {
+          "sku": "OS-1402",
+          "description": "Hanging file folders, box of 25",
+          "qty": 1,
+          "unit_price": 18.4,
+          "amount": 18.4
+        },
+        {
+          "sku": "OS-1101",
+          "description": "Copy paper, letter, 10-ream case",
+          "qty": 24,
+          "unit_price": 48.9,
+          "amount": 1173.6
+        },
+        {
+          "sku": "OS-1315",
+          "description": "Gel pens, blue, box of 12",
+          "qty": 2,
+          "unit_price": 11.25,
+          "amount": 22.5
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "081924865",
+      "account_number": "48648925713",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B005_V001_INV-01114.pdf",
+      "vendor_name": "Corvane Office Supply LLC",
+      "due_date": "2026-10-01",
+      "subtotal": 1214.5,
+      "tax": 0.0,
+      "total": 1214.5,
+      "expected_exceptions": []
+    },
+    "B036": {
+      "doc_id": "B036",
+      "vendor_id": "V002",
+      "invoice_number": "2026-1747",
+      "invoice_date": "2026-09-26",
+      "po_number": "PO-4508",
+      "lines": [
+        {
+          "sku": "TF-2455",
+          "description": "Threaded rod 3/8-16 x 6ft",
+          "qty": 3,
+          "unit_price": 9.85,
+          "amount": 29.55
+        },
+        {
+          "sku": "TF-2390",
+          "description": "Flat washer M10, box of 500",
+          "qty": 1,
+          "unit_price": 17.95,
+          "amount": 17.95
+        },
+        {
+          "sku": "TF-2301",
+          "description": "Socket cap screw M6x20, box of 100",
+          "qty": 12,
+          "unit_price": 22.1,
+          "amount": 265.2
+        },
+        {
+          "sku": "TF-2510",
+          "description": "Rivet nut M8, box of 50",
+          "qty": 4,
+          "unit_price": 41.2,
+          "amount": 164.8
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "Harborline Trust",
+      "routing_number": "022175294",
+      "account_number": "59201304782",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": true,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B036_V002_2026-1747.pdf",
+      "vendor_name": "Tallis Fastener Works Inc.",
+      "due_date": "2026-10-26",
+      "subtotal": 477.5,
+      "tax": 0.0,
+      "total": 477.5,
+      "expected_exceptions": []
+    },
+    "B012": {
+      "doc_id": "B012",
+      "vendor_id": "V002",
+      "invoice_number": "2026-1785",
+      "invoice_date": "2026-09-10",
+      "po_number": "PO-4509",
+      "lines": [
+        {
+          "sku": "TF-2301",
+          "description": "Socket cap screw M6x20, box of 100",
+          "qty": 5,
+          "unit_price": 22.1,
+          "amount": 110.5
+        },
+        {
+          "sku": "TF-2390",
+          "description": "Flat washer M10, box of 500",
+          "qty": 6,
+          "unit_price": 17.95,
+          "amount": 107.7
+        },
+        {
+          "sku": "TF-2234",
+          "description": "Flange nut M10, box of 200",
+          "qty": 1,
+          "unit_price": 29.5,
+          "amount": 29.5
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "Harborline Trust",
+      "routing_number": "022175294",
+      "account_number": "59201304782",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B012_V002_2026-1785.pdf",
+      "vendor_name": "Tallis Fastener Works Inc.",
+      "due_date": "2026-10-10",
+      "subtotal": 247.7,
+      "tax": 0.0,
+      "total": 247.7,
+      "expected_exceptions": []
+    },
+    "B027": {
+      "doc_id": "B027",
+      "vendor_id": "V002",
+      "invoice_number": "2026-1796",
+      "invoice_date": "2026-09-20",
+      "po_number": "PO-4513",
+      "lines": [
+        {
+          "sku": "TF-2234",
+          "description": "Flange nut M10, box of 200",
+          "qty": 24,
+          "unit_price": 29.5,
+          "amount": 708.0
+        },
+        {
+          "sku": "TF-2390",
+          "description": "Flat washer M10, box of 500",
+          "qty": 10,
+          "unit_price": 17.95,
+          "amount": 179.5
+        },
+        {
+          "sku": "TF-2210",
+          "description": "Hex bolt M10x40, zinc, box of 100",
+          "qty": 12,
+          "unit_price": 36.8,
+          "amount": 441.6
+        },
+        {
+          "sku": "TF-2301",
+          "description": "Socket cap screw M6x20, box of 100",
+          "qty": 8,
+          "unit_price": 22.1,
+          "amount": 176.8
+        },
+        {
+          "sku": "TF-2510",
+          "description": "Rivet nut M8, box of 50",
+          "qty": 12,
+          "unit_price": 41.2,
+          "amount": 494.4
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "Harborline Trust",
+      "routing_number": "022175294",
+      "account_number": "59201304782",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": true,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B027_V002_2026-1796.pdf",
+      "vendor_name": "Tallis Fastener Works Inc.",
+      "due_date": "2026-10-20",
+      "subtotal": 2000.3,
+      "tax": 0.0,
+      "total": 2000.3,
+      "expected_exceptions": []
+    },
+    "B019": {
+      "doc_id": "B019",
+      "vendor_id": "V003",
+      "invoice_number": "A02367",
+      "invoice_date": "2026-09-15",
+      "po_number": "PO-7189",
+      "lines": [
+        {
+          "sku": "QE-3170",
+          "description": "Breaker 20A single pole",
+          "qty": 2,
+          "unit_price": 14.6,
+          "amount": 29.2
+        },
+        {
+          "sku": "QE-3105",
+          "description": "THHN wire 12 AWG, 500ft spool",
+          "qty": 24,
+          "unit_price": 118.0,
+          "amount": 2832.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "088590039",
+      "account_number": "6998696980",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "NO_PO"
+      ],
+      "file": "B019_V003_A02367.pdf",
+      "vendor_name": "Quillmark Industrial Electric",
+      "due_date": "2026-10-15",
+      "subtotal": 2861.2,
+      "tax": 207.44,
+      "total": 3068.64,
+      "expected_exceptions": [
+        {
+          "rule": "NO_PO",
+          "amount": 3068.64
+        }
+      ]
+    },
+    "B002": {
+      "doc_id": "B002",
+      "vendor_id": "V003",
+      "invoice_number": "A02385",
+      "invoice_date": "2026-08-30",
+      "po_number": "PO-4521",
+      "lines": [
+        {
+          "sku": "QE-3348",
+          "description": "Junction box 4in square",
+          "qty": 10,
+          "unit_price": 3.95,
+          "amount": 39.5
+        },
+        {
+          "sku": "QE-3170",
+          "description": "Breaker 20A single pole",
+          "qty": 3,
+          "unit_price": 14.6,
+          "amount": 43.8
+        },
+        {
+          "sku": "QE-3222",
+          "description": "LED high-bay fixture 150W",
+          "qty": 3,
+          "unit_price": 189.0,
+          "amount": 567.0
+        },
+        {
+          "sku": "QE-3105",
+          "description": "THHN wire 12 AWG, 500ft spool",
+          "qty": 5,
+          "unit_price": 118.0,
+          "amount": 590.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "088590039",
+      "account_number": "6998696980",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B002_V003_A02385.pdf",
+      "vendor_name": "Quillmark Industrial Electric",
+      "due_date": "2026-09-29",
+      "subtotal": 1240.3,
+      "tax": 89.92,
+      "total": 1330.22,
+      "expected_exceptions": []
+    },
+    "B034": {
+      "doc_id": "B034",
+      "vendor_id": "V003",
+      "invoice_number": "A02393",
+      "invoice_date": "2026-09-25",
+      "po_number": "PO-4530",
+      "lines": [
+        {
+          "sku": "QE-3170",
+          "description": "Breaker 20A single pole",
+          "qty": 6,
+          "unit_price": 14.6,
+          "amount": 87.6
+        },
+        {
+          "sku": "QE-3222",
+          "description": "LED high-bay fixture 150W",
+          "qty": 8,
+          "unit_price": 189.0,
+          "amount": 1512.0
+        },
+        {
+          "sku": "QE-3401",
+          "description": "Motor starter, 3-phase, 10HP",
+          "qty": 2,
+          "unit_price": 412.0,
+          "amount": 824.0
+        },
+        {
+          "sku": "QE-3105",
+          "description": "THHN wire 12 AWG, 500ft spool",
+          "qty": 10,
+          "unit_price": 118.0,
+          "amount": 1180.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "088590039",
+      "account_number": "6998696980",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B034_V003_A02393.pdf",
+      "vendor_name": "Quillmark Industrial Electric",
+      "due_date": "2026-10-25",
+      "subtotal": 3603.6,
+      "tax": 261.26,
+      "total": 3864.86,
+      "expected_exceptions": []
+    },
+    "B004": {
+      "doc_id": "B004",
+      "vendor_id": "V004",
+      "invoice_number": "SI-03098",
+      "invoice_date": "2026-08-31",
+      "po_number": "PO-4531",
+      "lines": [
+        {
+          "sku": "BP-4055",
+          "description": "Stretch film 18in x 1500ft",
+          "qty": 20,
+          "unit_price": 22.4,
+          "amount": 448.0
+        },
+        {
+          "sku": "BP-4160",
+          "description": "Void fill paper, 1000ft roll",
+          "qty": 1,
+          "unit_price": 44.9,
+          "amount": 44.9
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "051403729",
+      "account_number": "25404015764",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B004_V004_SI-03098.pdf",
+      "vendor_name": "Brennick Packaging Group",
+      "due_date": "2026-09-30",
+      "subtotal": 492.9,
+      "tax": 0.0,
+      "total": 492.9,
+      "expected_exceptions": []
+    },
+    "B030": {
+      "doc_id": "B030",
+      "vendor_id": "V004",
+      "invoice_number": "SI-03133",
+      "invoice_date": "2026-09-24",
+      "po_number": "PO-4534",
+      "lines": [
+        {
+          "sku": "BP-4250",
+          "description": "Edge protector 2x2x36, bundle of 100",
+          "qty": 6,
+          "unit_price": 39.0,
+          "amount": 234.0
+        },
+        {
+          "sku": "BP-4203",
+          "description": "Packing tape 2in, case of 36",
+          "qty": 10,
+          "unit_price": 58.2,
+          "amount": 582.0
+        },
+        {
+          "sku": "BP-4160",
+          "description": "Void fill paper, 1000ft roll",
+          "qty": 3,
+          "unit_price": 44.9,
+          "amount": 134.7
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "051403729",
+      "account_number": "25404015764",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B030_V004_SI-03133.pdf",
+      "vendor_name": "Brennick Packaging Group",
+      "due_date": "2026-10-24",
+      "subtotal": 950.7,
+      "tax": 0.0,
+      "total": 950.7,
+      "expected_exceptions": []
+    },
+    "B010": {
+      "doc_id": "B010",
+      "vendor_id": "V004",
+      "invoice_number": "SI-03164",
+      "invoice_date": "2026-09-06",
+      "po_number": "PO-4535",
+      "lines": [
+        {
+          "sku": "BP-4250",
+          "description": "Edge protector 2x2x36, bundle of 100",
+          "qty": 24,
+          "unit_price": 39.0,
+          "amount": 936.0
+        },
+        {
+          "sku": "BP-4203",
+          "description": "Packing tape 2in, case of 36",
+          "qty": 20,
+          "unit_price": 58.2,
+          "amount": 1164.0
+        },
+        {
+          "sku": "BP-4055",
+          "description": "Stretch film 18in x 1500ft",
+          "qty": 24,
+          "unit_price": 22.4,
+          "amount": 537.6
+        },
+        {
+          "sku": "BP-4102",
+          "description": "Pallet, heat-treated 48x40",
+          "qty": 24,
+          "unit_price": 16.5,
+          "amount": 396.0
+        },
+        {
+          "sku": "BP-4010",
+          "description": "Corrugated box 18x12x12, bundle of 25",
+          "qty": 4,
+          "unit_price": 31.75,
+          "amount": 127.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "051403729",
+      "account_number": "25404015764",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "QTY_OVER_RECEIPT"
+      ],
+      "file": "B010_V004_SI-03164.pdf",
+      "vendor_name": "Brennick Packaging Group",
+      "due_date": "2026-10-06",
+      "subtotal": 3160.6,
+      "tax": 0.0,
+      "total": 3160.6,
+      "expected_exceptions": [
+        {
+          "rule": "QTY_OVER_RECEIPT",
+          "amount": 174.6
+        }
+      ]
+    },
+    "B035": {
+      "doc_id": "B035",
+      "vendor_id": "V005",
+      "invoice_number": "003588",
+      "invoice_date": "2026-09-25",
+      "po_number": "PO-4540",
+      "lines": [
+        {
+          "sku": "SP-5199",
+          "description": "First aid kit, 50-person",
+          "qty": 24,
+          "unit_price": 89.0,
+          "amount": 2136.0
+        },
+        {
+          "sku": "SP-5164",
+          "description": "Ear plugs, box of 200 pairs",
+          "qty": 4,
+          "unit_price": 34.4,
+          "amount": 137.6
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "2/10 Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "017999533",
+      "account_number": "29428429745",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": true,
+      "smudge": "total",
+      "note": "",
+      "planted": [],
+      "file": "B035_V005_003588.pdf",
+      "vendor_name": "Sorrel & Pike Safety Equipment",
+      "due_date": "2026-10-25",
+      "subtotal": 2273.6,
+      "tax": 0.0,
+      "total": 2273.6,
+      "expected_exceptions": []
+    },
+    "B008": {
+      "doc_id": "B008",
+      "vendor_id": "V005",
+      "invoice_number": "003604",
+      "invoice_date": "2026-09-03",
+      "po_number": "PO-4542",
+      "lines": [
+        {
+          "sku": "SP-5199",
+          "description": "First aid kit, 50-person",
+          "qty": 2,
+          "unit_price": 89.0,
+          "amount": 178.0
+        },
+        {
+          "sku": "SP-5164",
+          "description": "Ear plugs, box of 200 pairs",
+          "qty": 10,
+          "unit_price": 40.09,
+          "amount": 400.9
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "2/10 Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "017999533",
+      "account_number": "29428429745",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "PRICE_OVER_PO"
+      ],
+      "file": "B008_V005_003604.pdf",
+      "vendor_name": "Sorrel & Pike Safety Equipment",
+      "due_date": "2026-10-03",
+      "subtotal": 578.9,
+      "tax": 0.0,
+      "total": 578.9,
+      "expected_exceptions": [
+        {
+          "rule": "PRICE_OVER_PO",
+          "amount": 56.9
+        }
+      ]
+    },
+    "B026": {
+      "doc_id": "B026",
+      "vendor_id": "V005",
+      "invoice_number": "003643",
+      "invoice_date": "2026-09-19",
+      "po_number": "PO-4545",
+      "lines": [
+        {
+          "sku": "SP-5120",
+          "description": "Hi-vis vest class 2, 10-pack",
+          "qty": 1,
+          "unit_price": 52.0,
+          "amount": 52.0
+        },
+        {
+          "sku": "SP-5199",
+          "description": "First aid kit, 50-person",
+          "qty": 20,
+          "unit_price": 89.0,
+          "amount": 1780.0
+        },
+        {
+          "sku": "SP-5012",
+          "description": "Safety glasses, clear, box of 12",
+          "qty": 24,
+          "unit_price": 27.6,
+          "amount": 662.4
+        },
+        {
+          "sku": "SP-5040",
+          "description": "Cut-resistant gloves A4, 12 pairs",
+          "qty": 24,
+          "unit_price": 64.8,
+          "amount": 1555.2
+        },
+        {
+          "sku": "SP-5088",
+          "description": "Hard hat, type I, white",
+          "qty": 4,
+          "unit_price": 18.25,
+          "amount": 73.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "2/10 Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "017999533",
+      "account_number": "29428429745",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B026_V005_003643.pdf",
+      "vendor_name": "Sorrel & Pike Safety Equipment",
+      "due_date": "2026-10-19",
+      "subtotal": 4122.6,
+      "tax": 0.0,
+      "total": 4122.6,
+      "expected_exceptions": []
+    },
+    "B037": {
+      "doc_id": "B037",
+      "vendor_id": "V006",
+      "invoice_number": "INV-04185",
+      "invoice_date": "2026-09-26",
+      "po_number": "PO-4547",
+      "lines": [
+        {
+          "sku": "KS-6118",
+          "description": "Parafilm 4in x 125ft",
+          "qty": 12,
+          "unit_price": 41.7,
+          "amount": 500.4
+        },
+        {
+          "sku": "KS-6001",
+          "description": "Nitrile gloves M, box of 100",
+          "qty": 4,
+          "unit_price": 12.8,
+          "amount": 51.2
+        },
+        {
+          "sku": "KS-6055",
+          "description": "Weighing boats, medium, 500",
+          "qty": 5,
+          "unit_price": 24.1,
+          "amount": 120.5
+        },
+        {
+          "sku": "KS-6033",
+          "description": "Lab wipes, box of 280",
+          "qty": 2,
+          "unit_price": 6.3,
+          "amount": 12.6
+        },
+        {
+          "sku": "KS-6078",
+          "description": "Isopropyl alcohol 70%, 4L",
+          "qty": 10,
+          "unit_price": 22.6,
+          "amount": 226.0
+        },
+        {
+          "sku": "KS-6012",
+          "description": "Pipette tips 200uL, rack of 96",
+          "qty": 1,
+          "unit_price": 9.4,
+          "amount": 9.4
+        },
+        {
+          "sku": "KS-6027",
+          "description": "Graduated cylinder 100mL",
+          "qty": 5,
+          "unit_price": 14.2,
+          "amount": 71.0
+        },
+        {
+          "sku": "KS-6101",
+          "description": "Thermometer, digital probe",
+          "qty": 10,
+          "unit_price": 46.25,
+          "amount": 462.5
+        },
+        {
+          "sku": "KS-6093",
+          "description": "Magnetic stir bar set",
+          "qty": 2,
+          "unit_price": 33.8,
+          "amount": 67.6
+        },
+        {
+          "sku": "KS-6041",
+          "description": "Sample vials 20mL, pack of 100",
+          "qty": 12,
+          "unit_price": 38.9,
+          "amount": 466.8
+        },
+        {
+          "sku": "KS-6062",
+          "description": "Centrifuge tubes 50mL, 500",
+          "qty": 10,
+          "unit_price": 96.0,
+          "amount": 960.0
+        },
+        {
+          "sku": "KS-6019",
+          "description": "Beaker, borosilicate 600mL",
+          "qty": 5,
+          "unit_price": 7.65,
+          "amount": 38.25
+        },
+        {
+          "sku": "KS-6070",
+          "description": "Lab coat, white, size L",
+          "qty": 8,
+          "unit_price": 28.5,
+          "amount": 228.0
+        },
+        {
+          "sku": "KS-6085",
+          "description": "Petri dishes 100mm, 500",
+          "qty": 4,
+          "unit_price": 71.4,
+          "amount": 285.6
+        },
+        {
+          "sku": "KS-6048",
+          "description": "pH buffer solution 7.00, 500mL",
+          "qty": 4,
+          "unit_price": 19.75,
+          "amount": 79.0
+        },
+        {
+          "sku": "KS-6110",
+          "description": "Wash bottle 500mL, 6-pack",
+          "qty": 2,
+          "unit_price": 15.9,
+          "amount": 31.8
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Pinecrest National Bank",
+      "routing_number": "043343251",
+      "account_number": "25886670375",
+      "layout": "ledger",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B037_V006_INV-04185.pdf",
+      "vendor_name": "Kestrel Scientific Supply",
+      "due_date": "2026-10-26",
+      "subtotal": 3610.65,
+      "tax": 261.77,
+      "total": 3872.42,
+      "expected_exceptions": []
+    },
+    "B038": {
+      "doc_id": "B038",
+      "vendor_id": "V006",
+      "invoice_number": "INV-04209",
+      "invoice_date": "2026-09-26",
+      "po_number": "PO-4554",
+      "lines": [
+        {
+          "sku": "KS-6001",
+          "description": "Nitrile gloves M, box of 100",
+          "qty": 10,
+          "unit_price": 12.8,
+          "amount": 128.0
+        },
+        {
+          "sku": "KS-6055",
+          "description": "Weighing boats, medium, 500",
+          "qty": 8,
+          "unit_price": 24.1,
+          "amount": 192.8
+        },
+        {
+          "sku": "KS-6078",
+          "description": "Isopropyl alcohol 70%, 4L",
+          "qty": 5,
+          "unit_price": 22.6,
+          "amount": 113.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Pinecrest National Bank",
+      "routing_number": "043343251",
+      "account_number": "25886670375",
+      "layout": "ledger",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B038_V006_INV-04209.pdf",
+      "vendor_name": "Kestrel Scientific Supply",
+      "due_date": "2026-10-26",
+      "subtotal": 433.8,
+      "tax": 31.45,
+      "total": 465.25,
+      "expected_exceptions": []
+    },
+    "B021": {
+      "doc_id": "B021",
+      "vendor_id": "V007",
+      "invoice_number": "2026-4807",
+      "invoice_date": "2026-09-16",
+      "po_number": "PO-4561",
+      "lines": [
+        {
+          "sku": "AF-7090",
+          "description": "Restroom supply restock",
+          "qty": 5,
+          "unit_price": 312.5,
+          "amount": 1562.5
+        },
+        {
+          "sku": "AF-7005",
+          "description": "Janitorial service, monthly",
+          "qty": 5,
+          "unit_price": 2450.0,
+          "amount": 12250.0
+        },
+        {
+          "sku": "AF-7114",
+          "description": "Carpet extraction, per room",
+          "qty": 6,
+          "unit_price": 95.0,
+          "amount": 570.0
+        },
+        {
+          "sku": "AF-7062",
+          "description": "Window cleaning, exterior",
+          "qty": 2,
+          "unit_price": 640.0,
+          "amount": 1280.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "2/10 Net 30",
+      "bank_name": "Pinecrest National Bank",
+      "routing_number": "055636250",
+      "account_number": "5902144621",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "Please note: our banking details have changed. Kindly update your records and remit to the account below.",
+      "planted": [
+        "BANK_MISMATCH"
+      ],
+      "file": "B021_V007_2026-4807.pdf",
+      "vendor_name": "Ardent Facility Services",
+      "due_date": "2026-10-16",
+      "subtotal": 15662.5,
+      "tax": 1135.53,
+      "total": 16798.03,
+      "expected_exceptions": [
+        {
+          "rule": "BANK_MISMATCH",
+          "amount": 16798.03
+        }
+      ]
+    },
+    "B025": {
+      "doc_id": "B025",
+      "vendor_id": "V007",
+      "invoice_number": "2026-4822",
+      "invoice_date": "2026-09-18",
+      "po_number": "PO-4566",
+      "lines": [
+        {
+          "sku": "AF-7005",
+          "description": "Janitorial service, monthly",
+          "qty": 24,
+          "unit_price": 2450.0,
+          "amount": 58800.0
+        },
+        {
+          "sku": "AF-7062",
+          "description": "Window cleaning, exterior",
+          "qty": 3,
+          "unit_price": 640.0,
+          "amount": 1920.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "2/10 Net 30",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "019824854",
+      "account_number": "70226565392",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B025_V007_2026-4822.pdf",
+      "vendor_name": "Ardent Facility Services",
+      "due_date": "2026-10-18",
+      "subtotal": 60720.0,
+      "tax": 4402.2,
+      "total": 65122.2,
+      "expected_exceptions": []
+    },
+    "B006": {
+      "doc_id": "B006",
+      "vendor_id": "V008",
+      "invoice_number": "A05465",
+      "invoice_date": "2026-09-01",
+      "po_number": "PO-4574",
+      "lines": [
+        {
+          "sku": "NH-8120",
+          "description": "Pleated filter 20x25x2 MERV 13, case of 12",
+          "qty": 1,
+          "unit_price": 96.0,
+          "amount": 96.0
+        },
+        {
+          "sku": "NH-8231",
+          "description": "Contactor 2-pole 40A",
+          "qty": 8,
+          "unit_price": 26.8,
+          "amount": 214.4
+        },
+        {
+          "sku": "NH-8155",
+          "description": "Condenser fan motor 1/3HP",
+          "qty": 10,
+          "unit_price": 190.3,
+          "amount": 1903.0
+        },
+        {
+          "sku": "NH-8190",
+          "description": "Capacitor 45/5 MFD",
+          "qty": 20,
+          "unit_price": 21.4,
+          "amount": 428.0
+        },
+        {
+          "sku": "NH-8302",
+          "description": "Thermostat, programmable",
+          "qty": 3,
+          "unit_price": 74.5,
+          "amount": 223.5
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 45",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "086910239",
+      "account_number": "47464473802",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "PRICE_OVER_PO"
+      ],
+      "file": "B006_V008_A05465.pdf",
+      "vendor_name": "Northgate HVAC Parts",
+      "due_date": "2026-10-16",
+      "subtotal": 2864.9,
+      "tax": 0.0,
+      "total": 2864.9,
+      "expected_exceptions": [
+        {
+          "rule": "PRICE_OVER_PO",
+          "amount": 223.0
+        }
+      ]
+    },
+    "B022": {
+      "doc_id": "B022",
+      "vendor_id": "V008",
+      "invoice_number": "A05500",
+      "invoice_date": "2026-09-17",
+      "po_number": "PO-4576",
+      "lines": [
+        {
+          "sku": "NH-8190",
+          "description": "Capacitor 45/5 MFD",
+          "qty": 4,
+          "unit_price": 21.4,
+          "amount": 85.6
+        },
+        {
+          "sku": "NH-8302",
+          "description": "Thermostat, programmable",
+          "qty": 5,
+          "unit_price": 74.5,
+          "amount": 372.5
+        },
+        {
+          "sku": "NH-8231",
+          "description": "Contactor 2-pole 40A",
+          "qty": 10,
+          "unit_price": 26.8,
+          "amount": 268.0
+        },
+        {
+          "sku": "NH-8277",
+          "description": "Refrigerant R-410A, 25lb",
+          "qty": 12,
+          "unit_price": 245.0,
+          "amount": 2940.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 45",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "086910239",
+      "account_number": "47464473802",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": true,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B022_V008_A05500.pdf",
+      "vendor_name": "Northgate HVAC Parts",
+      "due_date": "2026-11-01",
+      "subtotal": 3666.1,
+      "tax": 0.0,
+      "total": 3666.1,
+      "expected_exceptions": []
+    },
+    "B001": {
+      "doc_id": "B001",
+      "vendor_id": "V008",
+      "invoice_number": "A05519",
+      "invoice_date": "2026-08-29",
+      "po_number": "PO-4579",
+      "lines": [
+        {
+          "sku": "NH-8277",
+          "description": "Refrigerant R-410A, 25lb",
+          "qty": 8,
+          "unit_price": 245.0,
+          "amount": 1960.0
+        },
+        {
+          "sku": "NH-8155",
+          "description": "Condenser fan motor 1/3HP",
+          "qty": 3,
+          "unit_price": 168.0,
+          "amount": 504.0
+        },
+        {
+          "sku": "NH-8231",
+          "description": "Contactor 2-pole 40A",
+          "qty": 12,
+          "unit_price": 26.8,
+          "amount": 321.6
+        },
+        {
+          "sku": "NH-8302",
+          "description": "Thermostat, programmable",
+          "qty": 4,
+          "unit_price": 74.5,
+          "amount": 298.0
+        },
+        {
+          "sku": "NH-8190",
+          "description": "Capacitor 45/5 MFD",
+          "qty": 4,
+          "unit_price": 21.4,
+          "amount": 85.6
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 45",
+      "bank_name": "Great Lakes Commerce Bank",
+      "routing_number": "086910239",
+      "account_number": "47464473802",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": true,
+      "smudge": "invoice_number",
+      "note": "",
+      "planted": [],
+      "file": "B001_V008_A05519.pdf",
+      "vendor_name": "Northgate HVAC Parts",
+      "due_date": "2026-10-13",
+      "subtotal": 3169.2,
+      "tax": 0.0,
+      "total": 3169.2,
+      "expected_exceptions": []
+    },
+    "B028": {
+      "doc_id": "B028",
+      "vendor_id": "V009",
+      "invoice_number": "SI-06030",
+      "invoice_date": "2026-09-20",
+      "po_number": "PO-4583",
+      "lines": [
+        {
+          "sku": "IV-9315",
+          "description": "Deburring tool kit",
+          "qty": 8,
+          "unit_price": 31.6,
+          "amount": 252.8
+        },
+        {
+          "sku": "IV-9233",
+          "description": "Grinding wheel 7in x 1/4in",
+          "qty": 8,
+          "unit_price": 12.95,
+          "amount": 103.6
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "046230636",
+      "account_number": "97525517353",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B028_V009_SI-06030.pdf",
+      "vendor_name": "Ironvale Tool & Supply",
+      "due_date": "2026-10-20",
+      "subtotal": 356.4,
+      "tax": 25.84,
+      "total": 382.24,
+      "expected_exceptions": []
+    },
+    "B014": {
+      "doc_id": "B014",
+      "vendor_id": "V009",
+      "invoice_number": "SI-06060",
+      "invoice_date": "2026-09-11",
+      "po_number": "PO-4588",
+      "lines": [
+        {
+          "sku": "IV-9270",
+          "description": "Torque wrench 1/2in drive",
+          "qty": 12,
+          "unit_price": 214.0,
+          "amount": 2568.0
+        },
+        {
+          "sku": "IV-9188",
+          "description": "Cutting fluid, 5 gal",
+          "qty": 12,
+          "unit_price": 87.5,
+          "amount": 1050.0
+        },
+        {
+          "sku": "IV-9150",
+          "description": "Drill bit set, cobalt, 29pc",
+          "qty": 24,
+          "unit_price": 129.0,
+          "amount": 3096.0
+        },
+        {
+          "sku": "IV-9315",
+          "description": "Deburring tool kit",
+          "qty": 4,
+          "unit_price": 31.6,
+          "amount": 126.4
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Pinecrest National Bank",
+      "routing_number": "044213934",
+      "account_number": "82768600978",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": true,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "BANK_MISMATCH"
+      ],
+      "file": "B014_V009_SI-06060.pdf",
+      "vendor_name": "Ironvale Tool & Supply",
+      "due_date": "2026-10-11",
+      "subtotal": 6840.4,
+      "tax": 495.93,
+      "total": 7336.33,
+      "expected_exceptions": [
+        {
+          "rule": "BANK_MISMATCH",
+          "amount": 7336.33
+        }
+      ]
+    },
+    "B023": {
+      "doc_id": "B023",
+      "vendor_id": "V009",
+      "invoice_number": "SI-06096",
+      "invoice_date": "2026-09-17",
+      "po_number": "PO-4596",
+      "lines": [
+        {
+          "sku": "IV-9150",
+          "description": "Drill bit set, cobalt, 29pc",
+          "qty": 8,
+          "unit_price": 129.0,
+          "amount": 1032.0
+        },
+        {
+          "sku": "IV-9104",
+          "description": "Carbide end mill 1/2in 4-flute",
+          "qty": 10,
+          "unit_price": 58.4,
+          "amount": 584.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "046230636",
+      "account_number": "97525517353",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B023_V009_SI-06096.pdf",
+      "vendor_name": "Ironvale Tool & Supply",
+      "due_date": "2026-10-17",
+      "subtotal": 1616.0,
+      "tax": 117.16,
+      "total": 1733.16,
+      "expected_exceptions": []
+    },
+    "B016": {
+      "doc_id": "B016",
+      "vendor_id": "V010",
+      "invoice_number": "006637",
+      "invoice_date": "2026-09-12",
+      "po_number": "PO-4604",
+      "lines": [
+        {
+          "sku": "LP-1012",
+          "description": "Laptop, 14in, 32GB RAM",
+          "qty": 3,
+          "unit_price": 1489.0,
+          "amount": 4467.0
+        },
+        {
+          "sku": "LP-1048",
+          "description": "27in monitor, USB-C",
+          "qty": 12,
+          "unit_price": 329.0,
+          "amount": 3948.0
+        },
+        {
+          "sku": "LP-1175",
+          "description": "Wireless access point",
+          "qty": 24,
+          "unit_price": 248.0,
+          "amount": 5952.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 45",
+      "bank_name": "Pinecrest National Bank",
+      "routing_number": "061780050",
+      "account_number": "95004122248",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B016_V010_006637.pdf",
+      "vendor_name": "Lumen Peak IT Solutions",
+      "due_date": "2026-10-27",
+      "subtotal": 14367.0,
+      "tax": 1041.61,
+      "total": 15408.61,
+      "expected_exceptions": []
+    },
+    "B007": {
+      "doc_id": "B007",
+      "vendor_id": "V010",
+      "invoice_number": "006646",
+      "invoice_date": "2026-09-01",
+      "po_number": "PO-4613",
+      "lines": [
+        {
+          "sku": "LP-1048",
+          "description": "27in monitor, USB-C",
+          "qty": 24,
+          "unit_price": 329.0,
+          "amount": 7896.0
+        },
+        {
+          "sku": "LP-1175",
+          "description": "Wireless access point",
+          "qty": 5,
+          "unit_price": 248.0,
+          "amount": 1240.0
+        },
+        {
+          "sku": "LP-1012",
+          "description": "Laptop, 14in, 32GB RAM",
+          "qty": 3,
+          "unit_price": 1489.0,
+          "amount": 4467.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 45",
+      "bank_name": "Pinecrest National Bank",
+      "routing_number": "061780050",
+      "account_number": "95004122248",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B007_V010_006646.pdf",
+      "vendor_name": "Lumen Peak IT Solutions",
+      "due_date": "2026-10-16",
+      "subtotal": 13603.0,
+      "tax": 986.22,
+      "total": 14589.22,
+      "expected_exceptions": []
+    },
+    "B031": {
+      "doc_id": "B031",
+      "vendor_id": "V010",
+      "invoice_number": "006664",
+      "invoice_date": "2026-09-24",
+      "po_number": "PO-4622",
+      "lines": [
+        {
+          "sku": "LP-1175",
+          "description": "Wireless access point",
+          "qty": 5,
+          "unit_price": 248.0,
+          "amount": 1240.0
+        },
+        {
+          "sku": "LP-1210",
+          "description": "Managed services, monthly per seat",
+          "qty": 4,
+          "unit_price": 85.0,
+          "amount": 340.0
+        },
+        {
+          "sku": "LP-1048",
+          "description": "27in monitor, USB-C",
+          "qty": 20,
+          "unit_price": 329.0,
+          "amount": 6580.0
+        },
+        {
+          "sku": "LP-1133",
+          "description": "Network switch 24-port PoE",
+          "qty": 1,
+          "unit_price": 612.0,
+          "amount": 612.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 45",
+      "bank_name": "Pinecrest National Bank",
+      "routing_number": "061780050",
+      "account_number": "95004122248",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B031_V010_006664.pdf",
+      "vendor_name": "Lumen Peak IT Solutions",
+      "due_date": "2026-11-08",
+      "subtotal": 8772.0,
+      "tax": 635.97,
+      "total": 9407.97,
+      "expected_exceptions": []
+    },
+    "B013": {
+      "doc_id": "B013",
+      "vendor_id": "V011",
+      "invoice_number": "INV-07228",
+      "invoice_date": "2026-09-10",
+      "po_number": "PO-4623",
+      "lines": [
+        {
+          "sku": "HU-1402",
+          "description": "Winter jacket, insulated",
+          "qty": 8,
+          "unit_price": 86.0,
+          "amount": 688.0
+        },
+        {
+          "sku": "HU-1325",
+          "description": "Work pants, khaki",
+          "qty": 24,
+          "unit_price": 29.75,
+          "amount": 714.0
+        },
+        {
+          "sku": "HU-1301",
+          "description": "Work shirt, navy, embroidered",
+          "qty": 5,
+          "unit_price": 24.5,
+          "amount": 122.5
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "039287351",
+      "account_number": "42954241217",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B013_V011_INV-07228.pdf",
+      "vendor_name": "Halcyon Uniform Co.",
+      "due_date": "2026-10-10",
+      "subtotal": 1524.5,
+      "tax": 0.0,
+      "total": 1524.5,
+      "expected_exceptions": []
+    },
+    "B009": {
+      "doc_id": "B009",
+      "vendor_id": "V011",
+      "invoice_number": "INV-07263",
+      "invoice_date": "2026-09-03",
+      "po_number": "PO-4630",
+      "lines": [
+        {
+          "sku": "HU-1325",
+          "description": "Work pants, khaki",
+          "qty": 10,
+          "unit_price": 29.75,
+          "amount": 297.5
+        },
+        {
+          "sku": "HU-1377",
+          "description": "Uniform rental, weekly per employee",
+          "qty": 1,
+          "unit_price": 14.2,
+          "amount": 14.2
+        },
+        {
+          "sku": "HU-1402",
+          "description": "Winter jacket, insulated",
+          "qty": 6,
+          "unit_price": 86.0,
+          "amount": 516.0
+        },
+        {
+          "sku": "HU-1301",
+          "description": "Work shirt, navy, embroidered",
+          "qty": 8,
+          "unit_price": 24.5,
+          "amount": 196.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "039287351",
+      "account_number": "42954241217",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "DUPLICATE"
+      ],
+      "file": "B009_V011_INV-07263.pdf",
+      "vendor_name": "Halcyon Uniform Co.",
+      "due_date": "2026-10-03",
+      "subtotal": 1023.7,
+      "tax": 0.0,
+      "total": 1023.7,
+      "expected_exceptions": [
+        {
+          "rule": "DUPLICATE",
+          "amount": 1023.7
+        }
+      ]
+    },
+    "B032": {
+      "doc_id": "B032",
+      "vendor_id": "V011",
+      "invoice_number": "INV-07277",
+      "invoice_date": "2026-09-24",
+      "po_number": "PO-4635",
+      "lines": [
+        {
+          "sku": "HU-1377",
+          "description": "Uniform rental, weekly per employee",
+          "qty": 4,
+          "unit_price": 14.2,
+          "amount": 56.8
+        },
+        {
+          "sku": "HU-1325",
+          "description": "Work pants, khaki",
+          "qty": 4,
+          "unit_price": 29.75,
+          "amount": 119.0
+        },
+        {
+          "sku": "HU-1402",
+          "description": "Winter jacket, insulated",
+          "qty": 10,
+          "unit_price": 86.0,
+          "amount": 860.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "039287351",
+      "account_number": "42954241217",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B032_V011_INV-07277.pdf",
+      "vendor_name": "Halcyon Uniform Co.",
+      "due_date": "2026-10-24",
+      "subtotal": 1035.8,
+      "tax": 0.0,
+      "total": 1035.8,
+      "expected_exceptions": []
+    },
+    "B015": {
+      "doc_id": "B015",
+      "vendor_id": "V012",
+      "invoice_number": "2026-7895",
+      "invoice_date": "2026-09-11",
+      "po_number": "PO-4638",
+      "lines": [
+        {
+          "sku": "WF-1410",
+          "description": "LTL freight, Toledo to Chicago",
+          "qty": 1,
+          "unit_price": 685.0,
+          "amount": 685.0
+        },
+        {
+          "sku": "WF-1433",
+          "description": "Liftgate delivery",
+          "qty": 20,
+          "unit_price": 75.0,
+          "amount": 1500.0
+        },
+        {
+          "sku": "WF-1488",
+          "description": "Full truckload, regional",
+          "qty": 3,
+          "unit_price": 2150.0,
+          "amount": 6450.0
+        },
+        {
+          "sku": "WF-1512",
+          "description": "Detention, per hour",
+          "qty": 8,
+          "unit_price": 85.0,
+          "amount": 680.0
+        },
+        {
+          "sku": "WF-1460",
+          "description": "Fuel surcharge",
+          "qty": 1,
+          "unit_price": 112.4,
+          "amount": 112.4
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "2/10 Net 30",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "083744576",
+      "account_number": "37722913375",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B015_V012_2026-7895.pdf",
+      "vendor_name": "Westbrook Freight Lines",
+      "due_date": "2026-10-11",
+      "subtotal": 9427.4,
+      "tax": 0.0,
+      "total": 9427.4,
+      "expected_exceptions": []
+    },
+    "B040": {
+      "doc_id": "B040",
+      "vendor_id": "V012",
+      "invoice_number": "2026-7915",
+      "invoice_date": "2026-10-03",
+      "po_number": "PO-4644",
+      "lines": [
+        {
+          "sku": "WF-1433",
+          "description": "Liftgate delivery",
+          "qty": 1,
+          "unit_price": 75.0,
+          "amount": 75.0
+        },
+        {
+          "sku": "WF-1512",
+          "description": "Detention, per hour",
+          "qty": 5,
+          "unit_price": 85.0,
+          "amount": 425.0
+        },
+        {
+          "sku": "WF-1460",
+          "description": "Fuel surcharge",
+          "qty": 24,
+          "unit_price": 112.4,
+          "amount": 2697.6
+        },
+        {
+          "sku": "WF-1488",
+          "description": "Full truckload, regional",
+          "qty": 8,
+          "unit_price": 2150.0,
+          "amount": 17200.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "2/10 Net 30",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "083744576",
+      "account_number": "37722913375",
+      "layout": "letterhead",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B040_V012_2026-7915.pdf",
+      "vendor_name": "Westbrook Freight Lines",
+      "due_date": "2026-11-02",
+      "subtotal": 20397.6,
+      "tax": 0.0,
+      "total": 20397.6,
+      "expected_exceptions": [
+        {
+          "rule": "DISCOUNT_WINDOW",
+          "amount": 407.95
+        }
+      ]
+    },
+    "B020": {
+      "doc_id": "B020",
+      "vendor_id": "V013",
+      "invoice_number": "A08408",
+      "invoice_date": "2026-09-15",
+      "po_number": "PO-4653",
+      "lines": [
+        {
+          "sku": "PW-1520",
+          "description": "Cooling tower chemical treatment, monthly",
+          "qty": 8,
+          "unit_price": 780.0,
+          "amount": 6240.0
+        },
+        {
+          "sku": "PW-1548",
+          "description": "Water softener salt, 50lb",
+          "qty": 2,
+          "unit_price": 9.8,
+          "amount": 19.6
+        },
+        {
+          "sku": "PW-1601",
+          "description": "RO membrane cartridge",
+          "qty": 1,
+          "unit_price": 268.0,
+          "amount": 268.0
+        },
+        {
+          "sku": "PW-1575",
+          "description": "Boiler water test kit",
+          "qty": 10,
+          "unit_price": 145.0,
+          "amount": 1450.0
+        },
+        {
+          "sku": "PW-1630",
+          "description": "Service visit, technician",
+          "qty": 4,
+          "unit_price": 195.0,
+          "amount": 780.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Harborline Trust",
+      "routing_number": "041132723",
+      "account_number": "33893078665",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B020_V013_A08408.pdf",
+      "vendor_name": "Pellucid Water Treatment",
+      "due_date": "2026-10-15",
+      "subtotal": 8757.6,
+      "tax": 634.93,
+      "total": 9392.53,
+      "expected_exceptions": []
+    },
+    "B011": {
+      "doc_id": "B011",
+      "vendor_id": "V013",
+      "invoice_number": "A08431",
+      "invoice_date": "2026-09-06",
+      "po_number": "PO-4659",
+      "lines": [
+        {
+          "sku": "PW-1548",
+          "description": "Water softener salt, 50lb",
+          "qty": 10,
+          "unit_price": 9.8,
+          "amount": 98.0
+        },
+        {
+          "sku": "PW-1601",
+          "description": "RO membrane cartridge",
+          "qty": 2,
+          "unit_price": 268.0,
+          "amount": 536.0
+        },
+        {
+          "sku": "PW-1520",
+          "description": "Cooling tower chemical treatment, monthly",
+          "qty": 1,
+          "unit_price": 780.0,
+          "amount": 780.0
+        },
+        {
+          "sku": "PW-1630",
+          "description": "Service visit, technician",
+          "qty": 5,
+          "unit_price": 195.0,
+          "amount": 975.0
+        },
+        {
+          "sku": "PW-1575",
+          "description": "Boiler water test kit",
+          "qty": 4,
+          "unit_price": 145.0,
+          "amount": 580.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "Harborline Trust",
+      "routing_number": "041132723",
+      "account_number": "33893078665",
+      "layout": "classic",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B011_V013_A08431.pdf",
+      "vendor_name": "Pellucid Water Treatment",
+      "due_date": "2026-10-06",
+      "subtotal": 2969.0,
+      "tax": 215.25,
+      "total": 3184.25,
+      "expected_exceptions": []
+    },
+    "B024": {
+      "doc_id": "B024",
+      "vendor_id": "V014",
+      "invoice_number": "SI-09072",
+      "invoice_date": "2026-09-17",
+      "po_number": "PO-4667",
+      "lines": [
+        {
+          "sku": "CP-1812",
+          "description": "Label rolls, thermal 4x6, case of 12",
+          "qty": 1,
+          "unit_price": 64.5,
+          "amount": 64.5
+        },
+        {
+          "sku": "CP-1705",
+          "description": "Safety signage, aluminum 10x14",
+          "qty": 4,
+          "unit_price": 18.6,
+          "amount": 74.4
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 45",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "081751584",
+      "account_number": "84190310637",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B024_V014_SI-09072.pdf",
+      "vendor_name": "Cobaltline Print & Signage",
+      "due_date": "2026-11-01",
+      "subtotal": 138.9,
+      "tax": 0.0,
+      "total": 138.9,
+      "expected_exceptions": []
+    },
+    "B017": {
+      "doc_id": "B017",
+      "vendor_id": "V014",
+      "invoice_number": "SI-09090",
+      "invoice_date": "2026-09-13",
+      "po_number": "PO-4673",
+      "lines": [
+        {
+          "sku": "CP-1733",
+          "description": "Floor marking tape, 2in x 100ft",
+          "qty": 3,
+          "unit_price": 27.4,
+          "amount": 82.2
+        },
+        {
+          "sku": "CP-1788",
+          "description": "Banner, vinyl 3x8ft",
+          "qty": 20,
+          "unit_price": 92.0,
+          "amount": 1840.0
+        },
+        {
+          "sku": "CP-1705",
+          "description": "Safety signage, aluminum 10x14",
+          "qty": 4,
+          "unit_price": 18.6,
+          "amount": 74.4
+        },
+        {
+          "sku": "CP-1760",
+          "description": "Business cards, box of 500",
+          "qty": 6,
+          "unit_price": 39.0,
+          "amount": 234.0
+        },
+        {
+          "sku": "CP-1812",
+          "description": "Label rolls, thermal 4x6, case of 12",
+          "qty": 6,
+          "unit_price": 64.5,
+          "amount": 387.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 45",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "081751584",
+      "account_number": "84190310637",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B017_V014_SI-09090.pdf",
+      "vendor_name": "Cobaltline Print & Signage",
+      "due_date": "2026-10-28",
+      "subtotal": 2617.6,
+      "tax": 0.0,
+      "total": 2617.6,
+      "expected_exceptions": []
+    },
+    "B018": {
+      "doc_id": "B018",
+      "vendor_id": "V014",
+      "invoice_number": "SI-09109",
+      "invoice_date": "2026-09-13",
+      "po_number": "PO-4676",
+      "lines": [
+        {
+          "sku": "CP-1705",
+          "description": "Safety signage, aluminum 10x14",
+          "qty": 12,
+          "unit_price": 18.6,
+          "amount": 223.2
+        },
+        {
+          "sku": "CP-1788",
+          "description": "Banner, vinyl 3x8ft",
+          "qty": 12,
+          "unit_price": 92.0,
+          "amount": 1104.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 45",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "081751584",
+      "account_number": "84190310637",
+      "layout": "banner",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B018_V014_SI-09109.pdf",
+      "vendor_name": "Cobaltline Print & Signage",
+      "due_date": "2026-10-28",
+      "subtotal": 1327.2,
+      "tax": 0.0,
+      "total": 1327.2,
+      "expected_exceptions": []
+    },
+    "B033": {
+      "doc_id": "B033",
+      "vendor_id": "V015",
+      "invoice_number": "009629",
+      "invoice_date": "2026-09-24",
+      "po_number": "PO-4683",
+      "lines": [
+        {
+          "sku": "MC-1902",
+          "description": "Air filter element",
+          "qty": 10,
+          "unit_price": 48.3,
+          "amount": 483.0
+        },
+        {
+          "sku": "MC-1981",
+          "description": "Air hose 3/8in x 50ft",
+          "qty": 3,
+          "unit_price": 34.75,
+          "amount": 104.25
+        },
+        {
+          "sku": "MC-2010",
+          "description": "Preventive maintenance visit",
+          "qty": 4,
+          "unit_price": 425.0,
+          "amount": 1700.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "2/10 Net 30",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "085064182",
+      "account_number": "54224862115",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B033_V015_009629.pdf",
+      "vendor_name": "Merrow Compressed Air Systems",
+      "due_date": "2026-10-24",
+      "subtotal": 2287.25,
+      "tax": 165.83,
+      "total": 2453.08,
+      "expected_exceptions": []
+    },
+    "B003": {
+      "doc_id": "B003",
+      "vendor_id": "V015",
+      "invoice_number": "009644",
+      "invoice_date": "2026-08-30",
+      "po_number": "PO-4689",
+      "lines": [
+        {
+          "sku": "MC-1957",
+          "description": "Quick coupler, 1/2in",
+          "qty": 5,
+          "unit_price": 11.2,
+          "amount": 56.0
+        },
+        {
+          "sku": "MC-2034",
+          "description": "Pressure regulator",
+          "qty": 20,
+          "unit_price": 66.4,
+          "amount": 1328.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "2/10 Net 30",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "085064182",
+      "account_number": "54224862115",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B003_V015_009644.pdf",
+      "vendor_name": "Merrow Compressed Air Systems",
+      "due_date": "2026-09-29",
+      "subtotal": 1384.0,
+      "tax": 100.34,
+      "total": 1484.34,
+      "expected_exceptions": []
+    },
+    "B039": {
+      "doc_id": "B039",
+      "vendor_id": "V015",
+      "invoice_number": "009679",
+      "invoice_date": "2026-10-01",
+      "po_number": "PO-4695",
+      "lines": [
+        {
+          "sku": "MC-1930",
+          "description": "Compressor oil, synthetic, 5 gal",
+          "qty": 3,
+          "unit_price": 189.0,
+          "amount": 567.0
+        },
+        {
+          "sku": "MC-2034",
+          "description": "Pressure regulator",
+          "qty": 5,
+          "unit_price": 66.4,
+          "amount": 332.0
+        },
+        {
+          "sku": "MC-2010",
+          "description": "Preventive maintenance visit",
+          "qty": 20,
+          "unit_price": 425.0,
+          "amount": 8500.0
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "2/10 Net 30",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "085064182",
+      "account_number": "54224862115",
+      "layout": "compact",
+      "set": "batch",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [],
+      "file": "B039_V015_009679.pdf",
+      "vendor_name": "Merrow Compressed Air Systems",
+      "due_date": "2026-10-31",
+      "subtotal": 9399.0,
+      "tax": 681.43,
+      "total": 10080.43,
+      "expected_exceptions": [
+        {
+          "rule": "DISCOUNT_WINDOW",
+          "amount": 201.61
+        }
+      ]
+    },
+    "L043": {
+      "doc_id": "L043",
+      "vendor_id": "V006",
+      "invoice_number": "INV-04238",
+      "invoice_date": "2026-10-06",
+      "po_number": "PO-4702",
+      "lines": [
+        {
+          "sku": "KS-6033",
+          "description": "Lab wipes, box of 280",
+          "qty": 3,
+          "unit_price": 6.3,
+          "amount": 18.9
+        },
+        {
+          "sku": "KS-6078",
+          "description": "Isopropyl alcohol 70%, 4L",
+          "qty": 8,
+          "unit_price": 22.6,
+          "amount": 180.8
+        },
+        {
+          "sku": "KS-6062",
+          "description": "Centrifuge tubes 50mL, 500",
+          "qty": 5,
+          "unit_price": 96.0,
+          "amount": 480.0
+        },
+        {
+          "sku": "KS-6012",
+          "description": "Pipette tips 200uL, rack of 96",
+          "qty": 8,
+          "unit_price": 9.4,
+          "amount": 75.2
+        },
+        {
+          "sku": "KS-6110",
+          "description": "Wash bottle 500mL, 6-pack",
+          "qty": 5,
+          "unit_price": 15.9,
+          "amount": 79.5
+        }
+      ],
+      "tax_rate": 0.0725,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "058825909",
+      "account_number": "29537816609",
+      "layout": "ledger",
+      "set": "live",
+      "scanned": false,
+      "smudge": "",
+      "note": "IMPORTANT: Effective immediately, all payments must be sent to our new bank account.",
+      "planted": [
+        "BANK_MISMATCH"
+      ],
+      "file": "L043_V006_INV-04238.pdf",
+      "vendor_name": "Kestrel Scientific Supply",
+      "due_date": "2026-11-05",
+      "subtotal": 834.4,
+      "tax": 60.49,
+      "total": 894.89,
+      "expected_exceptions": [
+        {
+          "rule": "BANK_MISMATCH",
+          "amount": 894.89
+        }
+      ]
+    },
+    "L041": {
+      "doc_id": "L041",
+      "vendor_id": "V002",
+      "invoice_number": "2026-1824",
+      "invoice_date": "2026-09-05",
+      "po_number": "PO-4705",
+      "lines": [
+        {
+          "sku": "TF-2234",
+          "description": "Flange nut M10, box of 200",
+          "qty": 2,
+          "unit_price": 29.5,
+          "amount": 59.0
+        },
+        {
+          "sku": "TF-2210",
+          "description": "Hex bolt M10x40, zinc, box of 100",
+          "qty": 2,
+          "unit_price": 36.8,
+          "amount": 73.6
+        },
+        {
+          "sku": "TF-2390",
+          "description": "Flat washer M10, box of 500",
+          "qty": 8,
+          "unit_price": 17.95,
+          "amount": 143.6
+        },
+        {
+          "sku": "TF-2455",
+          "description": "Threaded rod 3/8-16 x 6ft",
+          "qty": 20,
+          "unit_price": 9.85,
+          "amount": 197.0
+        },
+        {
+          "sku": "TF-2510",
+          "description": "Rivet nut M8, box of 50",
+          "qty": 6,
+          "unit_price": 41.2,
+          "amount": 247.2
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "Harborline Trust",
+      "routing_number": "022175294",
+      "account_number": "59201304782",
+      "layout": "banner",
+      "set": "live",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "DUPLICATE"
+      ],
+      "file": "L041_V002_2026-1824.pdf",
+      "vendor_name": "Tallis Fastener Works Inc.",
+      "due_date": "2026-10-05",
+      "subtotal": 720.4,
+      "tax": 0.0,
+      "total": 720.4,
+      "expected_exceptions": [
+        {
+          "rule": "DUPLICATE",
+          "amount": 720.4
+        }
+      ]
+    },
+    "L042": {
+      "doc_id": "L042",
+      "vendor_id": "V001",
+      "invoice_number": "INV-01129",
+      "invoice_date": "2026-10-02",
+      "po_number": "PO-4707",
+      "lines": [
+        {
+          "sku": "OS-1240",
+          "description": "Toner cartridge, black, high yield",
+          "qty": 5,
+          "unit_price": 148.39,
+          "amount": 741.95
+        },
+        {
+          "sku": "OS-1315",
+          "description": "Gel pens, blue, box of 12",
+          "qty": 12,
+          "unit_price": 11.25,
+          "amount": 135.0
+        },
+        {
+          "sku": "OS-1588",
+          "description": "Desk organizer, steel mesh",
+          "qty": 3,
+          "unit_price": 24.75,
+          "amount": 74.25
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 30",
+      "bank_name": "First Meridian Bank",
+      "routing_number": "081924865",
+      "account_number": "48648925713",
+      "layout": "classic",
+      "set": "live",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "PRICE_OVER_PO"
+      ],
+      "file": "L042_V001_INV-01129.pdf",
+      "vendor_name": "Corvane Office Supply LLC",
+      "due_date": "2026-11-01",
+      "subtotal": 951.2,
+      "tax": 0.0,
+      "total": 951.2,
+      "expected_exceptions": [
+        {
+          "rule": "PRICE_OVER_PO",
+          "amount": 81.95
+        }
+      ]
+    },
+    "L044": {
+      "doc_id": "L044",
+      "vendor_id": "V014",
+      "invoice_number": "SI-09145",
+      "invoice_date": "2026-10-06",
+      "po_number": "PO-7160",
+      "lines": [
+        {
+          "sku": "CP-1760",
+          "description": "Business cards, box of 500",
+          "qty": 20,
+          "unit_price": 39.0,
+          "amount": 780.0
+        },
+        {
+          "sku": "CP-1705",
+          "description": "Safety signage, aluminum 10x14",
+          "qty": 3,
+          "unit_price": 18.6,
+          "amount": 55.8
+        },
+        {
+          "sku": "CP-1812",
+          "description": "Label rolls, thermal 4x6, case of 12",
+          "qty": 24,
+          "unit_price": 64.5,
+          "amount": 1548.0
+        },
+        {
+          "sku": "CP-1733",
+          "description": "Floor marking tape, 2in x 100ft",
+          "qty": 4,
+          "unit_price": 27.4,
+          "amount": 109.6
+        },
+        {
+          "sku": "CP-1788",
+          "description": "Banner, vinyl 3x8ft",
+          "qty": 20,
+          "unit_price": 92.0,
+          "amount": 1840.0
+        }
+      ],
+      "tax_rate": 0.0,
+      "terms": "Net 45",
+      "bank_name": "Union Ledger Bank",
+      "routing_number": "081751584",
+      "account_number": "84190310637",
+      "layout": "banner",
+      "set": "live",
+      "scanned": false,
+      "smudge": "",
+      "note": "",
+      "planted": [
+        "NO_PO"
+      ],
+      "file": "L044_V014_SI-09145.pdf",
+      "vendor_name": "Cobaltline Print & Signage",
+      "due_date": "2026-11-20",
+      "subtotal": 4333.4,
+      "tax": 0.0,
+      "total": 4333.4,
+      "expected_exceptions": [
+        {
+          "rule": "NO_PO",
+          "amount": 4333.4
+        }
+      ]
+    }
+  }
+}

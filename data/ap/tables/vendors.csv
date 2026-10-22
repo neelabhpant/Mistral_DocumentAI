@@ -1,0 +1,16 @@
+vendor_id,name,address,tax_id,bank_name,routing_number,bank_account,payment_terms,status
+V001,Corvane Office Supply LLC,"5405 Market St, Columbus, OH 46234",93-1810111,First Meridian Bank,081924865,48648925713,Net 30,active
+V002,Tallis Fastener Works Inc.,"714 Industrial Dr, Akron, OH 46552",63-2171979,Harborline Trust,022175294,59201304782,Net 30,active
+V003,Quillmark Industrial Electric,"3757 Depot Rd, Dayton, OH 48139",84-2037872,Great Lakes Commerce Bank,088590039,6998696980,Net 30,active
+V004,Brennick Packaging Group,"4844 Mill St, Fort Wayne, IN 44181",79-2976225,Great Lakes Commerce Bank,051403729,25404015764,Net 30,active
+V005,Sorrel & Pike Safety Equipment,"3178 Lakeview Rd, Erie, PA 43798",80-2053424,Great Lakes Commerce Bank,017999533,29428429745,2/10 Net 30,active
+V006,Kestrel Scientific Supply,"5246 Harbor Way, Ann Arbor, MI 47796",68-7066345,Pinecrest National Bank,043343251,25886670375,Net 30,active
+V007,Ardent Facility Services,"8704 Harbor Way, Toledo, OH 45813",67-5830794,Great Lakes Commerce Bank,019824854,70226565392,2/10 Net 30,active
+V008,Northgate HVAC Parts,"2590 Harbor Way, Lansing, MI 46454",15-2302255,Great Lakes Commerce Bank,086910239,47464473802,Net 45,active
+V009,Ironvale Tool & Supply,"8237 Canal St, Pittsburgh, PA 49528",68-2153650,First Meridian Bank,046230636,97525517353,Net 30,active
+V010,Lumen Peak IT Solutions,"5172 Depot Rd, Cleveland, OH 47734",97-8476611,Pinecrest National Bank,061780050,95004122248,Net 45,active
+V011,Halcyon Uniform Co.,"5923 Market St, Indianapolis, IN 48004",24-9282794,First Meridian Bank,039287351,42954241217,Net 30,active
+V012,Westbrook Freight Lines,"6505 Harbor Way, Detroit, MI 43660",31-8536114,Union Ledger Bank,083744576,37722913375,2/10 Net 30,active
+V013,Pellucid Water Treatment,"6333 Riverside Ave, Grand Rapids, MI 44236",20-3956442,Harborline Trust,041132723,33893078665,Net 30,active
+V014,Cobaltline Print & Signage,"3087 Enterprise Blvd, Cincinnati, OH 45309",10-3444044,Union Ledger Bank,081751584,84190310637,Net 45,active
+V015,Merrow Compressed Air Systems,"8545 Canal St, Youngstown, OH 48365",96-1905850,Union Ledger Bank,085064182,54224862115,2/10 Net 30,active

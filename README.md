@@ -38,7 +38,8 @@ an action with an audit trail.
 
 | Path | What it does |
 |---|---|
-| `ap/generate.py` | Synthetic AP data from one seed: vendors, POs, receipts, payment history, invoice PDFs (5 layouts, scans, a 2-page invoice) with planted issues, plus `ground_truth.json` |
+| `data/ap/` | The synthetic AP data the demo ships with: enterprise tables as CSVs, 40 batch invoice PDFs, 4 held-back live samples, `ground_truth.json` |
+| `ap/generate.py` | Regenerates `data/ap/` from one seed: vendors, POs, receipts, payment history, invoice PDFs (5 layouts, scans, a 2-page invoice) with planted issues, plus the ground truth |
 | `ap/setup_lake.py` | Creates the Iceberg tables in `docai_ap`, loads the enterprise data, lands the batch PDFs in S3 |
 | `ap/pipeline.py` | PDF in S3 → OCR 4.1 (schema mode) → `extractions` with page/bbox/confidence → rules. Batch CLI and the live `ingest()` path |
 | `ap/rules.sql` | The joins that produce `exceptions`: bank mismatch, duplicate, unknown vendor, no PO, price over PO, qty over receipt, low confidence, discount window |
@@ -47,22 +48,52 @@ an action with an audit trail.
 | `app.py` | Streamlit app: action queue with evidence, live ingest, and "under the hood" views (architecture, OCR output, chat, tables, rules, accuracy) |
 | `ap/architecture.py` | The reference architecture diagram (SVG with embedded logos and font), used by the app and `docs/architecture.svg` |
 | `ap/brand.py` | Cloudera + Mistral palette, header and CSS; theme in `.streamlit/config.toml` |
-| `deploy_app.py` | Creates or updates the Cloudera AI Application (`docai-ap`) and the "AP pipeline" Job |
+| `ap/preflight.py` | Checks the project can run the demo: Python version, Mistral key and OCR model, Impala connection, data lake write access |
+| `.project-metadata.yaml` | The AMP definition: launch form, runtime, and the setup steps below |
+| `setup_demo.py`, `run_pipeline.py`, `launch_app.py` | Entry points for the setup Job, the "AP pipeline" Job and the Application |
+| `deploy_app.py` | Creates or updates the Application and the "AP pipeline" Job in an existing project (for development) |
 
-Settings are in `ap/config.py`, overridable by environment variable: S3 prefix, database, Impala connection,
-business date (`AP_AS_OF`) and review threshold (`AP_MIN_CONFIDENCE`).
+Settings are in `ap/config.py`, overridable by environment variable: data lake folder (`AP_S3_ROOT`, default
+`<data lake bucket>/user/<your user>/docai`), database (`AP_DB`, default `docai_ap`), Impala data connection
+(`AP_IMPALA_CONNECTION`), business date (`AP_AS_OF`) and review threshold (`AP_MIN_CONFIDENCE`).
+
+## Launch as an AMP
+
+The repo is an AMP (Accelerator for ML Projects): a new Cloudera AI project can set itself up from the GitHub URL.
+
+**You need:** a Cloudera AI workbench in a CDP environment with data lake access (IDBroker), a CDW Impala Virtual
+Warehouse that shows up as a data connection, the Python 3.12 runtime (3.11 or later works), outbound HTTPS to
+`api.mistral.ai`, and a Mistral API key with access to OCR 4.1.
+
+1. In Cloudera AI: **New Project**, choose **AMPs** under *Initial Setup*, and paste
+   `https://github.com/neelabhpant/Mistral_DocumentAI`. Create the project.
+2. Fill in the form: `MISTRAL_API_KEY`, the name of your Impala data connection (`AP_IMPALA_CONNECTION`), and the
+   database (`AP_DB`). Leave `AP_S3_ROOT` blank to use your folder in the data lake. **Launch Project.**
+3. The launch runs these steps (about 10 minutes):
+   - **AP setup** job (`setup_demo.py`): installs `requirements.txt`, runs the preflight checks, creates the Iceberg
+     tables, loads the enterprise data and lands the 40 batch invoices in the data lake.
+   - **AP pipeline** job (`run_pipeline.py`): Mistral OCR 4.1 reads each invoice, and the rules build the action queue.
+   - **Application** (`launch_app.py`): the Streamlit app. Open it from the project's *Applications* page.
+
+Setup drops and recreates the tables in `AP_DB`. If someone else already runs the demo in the same environment, give
+yours another database name. If a step fails, its job log says what to change. Fix the project environment variable
+(Project Settings > Advanced) and rerun the job, or check from a session with `python -m ap.preflight`.
 
 ## Run on Cloudera AI
 
-Set `MISTRAL_API_KEY` as a project environment variable (Project Settings > Advanced) and restart your session.
+To set up an existing project by hand instead: set `MISTRAL_API_KEY` as a project environment variable
+(Project Settings > Advanced) and restart your session.
 
 ```bash
-python -m ap.generate --vendors 15 --seed 7   # data/ap/: PDFs, CSVs, ground truth (data/ is gitignored)
-python -m ap.setup_lake --reset               # Iceberg tables + PDFs in S3
+python -m ap.preflight                        # Mistral key, Impala connection, data lake access
+python -m ap.setup_lake --reset               # Iceberg tables + PDFs in S3, from the shipped data/ap/
 python -m ap.pipeline --pending               # OCR 4.1 + rules (or run the "AP pipeline" Job)
 python -m ap.evaluate                         # accuracy vs ground truth
 python deploy_app.py                          # Application + Job
 ```
+
+`python -m ap.generate --vendors 15 --seed 7` regenerates `data/ap/`. With that seed you get the data the repo ships:
+the same tables and ground truth, and PDFs that render identically.
 
 The app and the Job run on a Python 3.12 runtime and install `requirements.txt` on first start (`ensure_deps.py`).
 
