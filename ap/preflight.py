@@ -4,10 +4,30 @@ connection, and write access to the data lake. Prints every problem at once with
 Usage: python -m ap.preflight   (the AMP setup Job runs it first)
 """
 
+import json
+import os
 import sys
 
 from ap import lake
 from ap.config import DB, IMPALA_CONNECTION, S3_ROOT
+
+FORM_VARS = ("MISTRAL_API_KEY", "AP_IMPALA_CONNECTION", "AP_DB", "AP_S3_ROOT")  # the AMP launch form
+
+
+def _form() -> str:
+    """Some Cloudera AI versions save a value typed into the AMP's Configure Project form as the browser's input event
+    (a JSON object) instead of the text. Caught first, before any check acts on such a value."""
+    try:
+        import cmlapi
+
+        env = json.loads(cmlapi.default_client().get_project(os.environ["CDSW_PROJECT_ID"]).environment or "{}")
+    except Exception as e:  # not on Cloudera AI, or the API is unreachable: nothing to check
+        return f"Form values not checked ({str(e)[:100]})"
+    bad = [k for k in FORM_VARS if k in env and not isinstance(env[k], str)]
+    if bad:
+        raise RuntimeError(f"The Configure Project form saved {', '.join(bad)} as a browser event instead of the text you "
+                           "typed. Set them in Project Settings > Advanced, then retry the failed step.")
+    return "Project environment variables are plain text"
 
 
 def _python() -> str:
@@ -57,6 +77,11 @@ def _lake() -> str:
 
 
 def check() -> None:
+    try:
+        print(f"  OK    {_form()}")
+    except RuntimeError as e:  # the other checks would act on the bad values
+        print(f"  FAIL  Form values: {e}")
+        raise
     failed = 0
     for name, fn in [("Python", _python), ("Mistral", _mistral), ("Impala", _impala), ("Data lake", _lake)]:
         try:

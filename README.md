@@ -76,8 +76,10 @@ Warehouse that shows up as a data connection, the Python 3.12 runtime (3.11 or l
    - **Application** (`launch_app.py`): the Streamlit app. Open it from the project's *Applications* page.
 
 Setup drops and recreates the tables in `AP_DB`. If someone else already runs the demo in the same environment, give
-yours another database name. If a step fails, its job log says what to change. Fix the project environment variable
-(Project Settings > Advanced) and rerun the job, or check from a session with `python -m ap.preflight`.
+yours another database name. If a step fails, its job log says what to change: fix the project environment variable
+(Project Settings > Advanced) and retry the step, or check from a session with `python -m ap.preflight`. Some Cloudera AI
+versions save values typed into the launch form as a browser event instead of the text; the setup job reports this
+first, and the fix is the same.
 
 ## Run on Cloudera AI
 
