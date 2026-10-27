@@ -45,9 +45,10 @@ an action with an audit trail.
 | `ap/rules.sql` | The joins that produce `exceptions`: bank mismatch, duplicate, unknown vendor, no PO, price over PO, qty over receipt, low confidence, discount window |
 | `ap/evidence.py` | Ties each extracted value to its OCR 4.1 block, line or table row, bounding box and word confidence |
 | `ap/evaluate.py` | Scores extraction and the action queue against the ground truth |
-| `app.py` | Streamlit app: action queue with evidence, live ingest, and "under the hood" views (architecture, OCR output, chat, tables, rules, accuracy) |
+| `app.py` | Web app: a FastAPI API over `ap/` (action queue, evidence, review, ingest, chat, tables, accuracy) that also serves the front end |
+| `static/` | Front end: plain HTML, CSS and JavaScript modules (no build step), fonts and logos |
 | `ap/architecture.py` | The reference architecture diagram (SVG with embedded logos and font), used by the app and `docs/architecture.svg` |
-| `ap/brand.py` | Cloudera + Mistral palette, header and CSS; theme in `.streamlit/config.toml` |
+| `ap/brand.py` | Cloudera + Mistral palette; the app gets it as CSS variables from `/brand.css` |
 | `ap/preflight.py` | Checks the project can run the demo: Python version, Mistral key and OCR model, Impala connection, data lake write access |
 | `.project-metadata.yaml` | The AMP definition: launch form, runtime, and the setup steps below |
 | `setup_demo.py`, `run_pipeline.py`, `launch_app.py` | Entry points for the setup Job, the "AP pipeline" Job and the Application |
@@ -73,7 +74,7 @@ Warehouse that shows up as a data connection, the Python 3.12 runtime (3.11 or l
    - **AP setup** job (`setup_demo.py`): installs `requirements.txt`, runs the preflight checks, creates the Iceberg
      tables, loads the enterprise data and lands the 40 batch invoices in the data lake.
    - **AP pipeline** job (`run_pipeline.py`): Mistral OCR 4.1 reads each invoice, and the rules build the action queue.
-   - **Application** (`launch_app.py`): the Streamlit app. Open it from the project's *Applications* page.
+   - **Application** (`launch_app.py`): the web app. Open it from the project's *Applications* page.
 
 Setup drops and recreates the tables in `AP_DB`. If someone else already runs the demo in the same environment, give
 yours another database name. If a step fails, its job log says what to change: fix the project environment variable
@@ -109,3 +110,14 @@ The app and the Job run on a Python 3.12 runtime and install `requirements.txt` 
    within seconds, using the same code as the batch Job.
 4. **Under the hood**: the OCR output, the schema and prompt, chat with the invoice, the Iceberg tables, the SQL rules, and the accuracy score.
    **Remove live uploads** resets the demo.
+
+## Tests
+
+The tests run the real app and `ap/` code on stand-ins for Impala (SQLite), S3 (a temporary folder) and the Mistral
+API (`tests/fakes.py`), so they need neither Cloudera nor a Mistral key:
+
+```bash
+pip install -r requirements-dev.txt
+python -m unittest discover -s tests -t . -v   # API, pipeline and rules
+node --test                                    # the front end's markdown renderer
+```

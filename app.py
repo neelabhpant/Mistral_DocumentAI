@@ -1,94 +1,282 @@
-"""Document AI on Cloudera: accounts payable invoices read by Mistral OCR 4.1, checked against governed
-enterprise data in Iceberg, and turned into a prioritized action queue with click-to-evidence.
+"""Document AI on Cloudera: the web app. A JSON API over the ap/ package (action queue with click-to-evidence, human
+review, live ingest, chat with an invoice, tables and rules, accuracy) that also serves the front end in static/ (plain
+HTML, CSS and JavaScript modules, no build step).
 
-Run: streamlit run app.py   (on Cloudera AI: launch_app.py)
+Long operations (ingest, review, reset, scoring) run as background jobs that the front end polls, so no request stays
+open behind the Cloudera AI proxy and the UI can show each step. Jobs, caches and the Impala lock live in this one
+process, so it runs as a single worker.
+
+Run: uvicorn app:app --port 8090   (on Cloudera AI: launch_app.py)
 """
 
 import json
+import math
+import mimetypes
 import os
 import re
+import secrets
+import sys
+import threading
 import time
+import traceback
+from collections import OrderedDict
+from contextlib import contextmanager
+from datetime import date, datetime
+from decimal import Decimal
+from functools import cache, lru_cache
 from pathlib import Path
 
-import altair as alt
-import pandas as pd
 import pymupdf
-import streamlit as st
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from mistralai.client import Mistral
 from mistralai.client.models import OCRResponse
-from PIL import Image, ImageDraw, ImageFont
+from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ap import architecture, brand, explain, lake, pipeline
 from ap.assistant import CHAT_MODEL, SUGGESTIONS, SYSTEM_PROMPT, ask, doc_for_chat, tool_spec
-from ap.config import AS_OF, DATA, DB, MIN_CONFIDENCE, S3_ROOT
-from ap.schema import ANNOTATION_FORMAT, INVOICE_PROMPT
+from ap.config import AS_OF, DATA, DB, MIN_CONFIDENCE, ROOT, S3_ROOT
+from ap.evaluate import evaluate
+from ap.schema import ANNOTATION_FORMAT, HEADER_FIELDS, INVOICE_PROMPT
+from ap.setup_lake import TABLES
 from ocr_extract import page_markdown
 from test_mistral_api import OCR_MODEL, get_client
 
 PRICE_PER_PAGE = 4 / 1000  # USD, standard (non-batch) API pricing
 REVIEWER = os.getenv("HADOOP_USER_NAME") or os.getenv("USER") or "reviewer"
 PRIORITY = {1: "1 · Critical", 2: "2 · High", 3: "3 · Medium", 4: "Opportunity", 5: "Review"}
-TONE, GRAY, BLOCK_COLORS = brand.TONE, brand.GRAY, brand.BLOCK_COLORS
 MD_PLACEHOLDER = re.compile(r"!?\[[^\]]*\]\([^)]*\)")
 WORD_OK = re.compile(r"^[\w$%.,;:'\"()/&-]+$")
 
-st.set_page_config(page_title="Document AI · Cloudera + Mistral AI", page_icon=brand.MISTRAL_ICON, layout="wide")
-st.markdown(brand.CSS, unsafe_allow_html=True)
+DOC_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")  # becomes part of local cache file names and S3 paths
+EVIDENCE_FIELD = re.compile(r"[A-Za-z0-9_:]{1,64}")
+HEX_ID = re.compile(r"[0-9a-f]{1,32}")  # job and chat ids
+API_KEY = re.compile(r"[\x21-\x7e]{16,256}")  # printable ASCII, no spaces
+MAX_UPLOAD = 25 * 1024 * 1024
+NO_KEY = ("No Mistral API key: paste one under Mistral API key in the sidebar, or set MISTRAL_API_KEY in Project "
+          "Settings > Advanced.")
+STATIC = ROOT / "static"
+CSP = ("default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; "
+       "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'")
+SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin"}
+
+# A Windows registry can map .js to text/plain, which browsers refuse for modules; older type maps lack woff2.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("font/woff2", ".woff2")
 
 
-# ---------- data access (Iceberg via Impala, PDFs and OCR output from S3) ----------
+# ---------- lake access: one lock, a short-lived cache ----------
+
+# cml.data_v1 hands out one shared Impala connection, and a HiveServer2 connection can't be used from several threads
+# at once (FastAPI runs these endpoints in a thread pool). Every operation that reaches the lake holds this lock.
+LAKE = threading.RLock()
+CACHE_SECONDS = 600  # as the old st.cache_data(ttl=600)
+_cache: dict[str, tuple[float, list[dict]]] = {}
+_epoch = 0  # bumped by clear_cache, so a read that overlapped a job's writes isn't cached after the job
 
 
-@st.cache_data(ttl=600, show_spinner=False)
-def q(sql: str) -> pd.DataFrame:
-    return pd.DataFrame(lake.query(sql))
+def clean(v):
+    """A value leaving the server: Decimal -> float, datetime -> "YYYY-MM-DD HH:MM:SS", date -> ISO, NaN -> None."""
+    if isinstance(v, Decimal):
+        v = float(v)
+    if isinstance(v, float) and math.isnan(v):
+        return None
+    if isinstance(v, datetime):
+        return f"{v:%Y-%m-%d %H:%M:%S}"
+    if isinstance(v, date):
+        return v.isoformat()
+    return v
 
 
-def refresh() -> None:
-    q.clear()
+def fetch(sql: str) -> list[dict]:
+    with LAKE:
+        rows = lake.query(sql)
+    return [{k: clean(v) for k, v in r.items()} for r in rows]
 
 
-@st.cache_resource(show_spinner=False)
-def client():
+def query(sql: str) -> list[dict]:
+    """fetch, cached by SQL text for CACHE_SECONDS. The rows are shared: don't modify them."""
+    hit = _cache.get(sql)
+    if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+        return hit[1]
+    epoch, rows = _epoch, fetch(sql)
+    if epoch == _epoch:
+        _cache[sql] = (time.monotonic(), rows)
+    return rows
+
+
+def clear_cache() -> None:
+    global _epoch
+    _epoch += 1
+    _cache.clear()
+
+
+def documents() -> list[dict]:
+    return query(f"""SELECT d.doc_id, d.file_name, d.s3_uri, d.sha256, d.source, d.status,
+                            CAST(d.ingested_at AS STRING) ingested_at, CAST(d.processed_at AS STRING) processed_at,
+                            h.vendor_name, h.invoice_number, h.total
+                     FROM {DB}.documents d LEFT JOIN {DB}.invoice_header h ON h.doc_id = d.doc_id ORDER BY d.doc_id""")
+
+
+def check(ok, message: str) -> None:
+    """400 with message unless ok."""
+    if not ok:
+        raise HTTPException(400, message)
+
+
+def document(doc_id: str, processed: bool = False) -> dict:
+    """A document's row: 400 for a malformed id, 404 for an unknown one (or, with processed, an unprocessed one)."""
+    check(DOC_ID.fullmatch(doc_id), "Invalid doc_id.")
+    doc = next((d for d in documents() if d["doc_id"] == doc_id), None)
+    if doc is None or (processed and doc["status"] != "processed"):
+        raise HTTPException(404, f"No {'processed ' if processed else ''}document {doc_id}.")
+    return doc
+
+
+def extractions(doc_id: str) -> list[dict]:
+    return query(f"SELECT * FROM {DB}.extractions WHERE doc_id = {lake.lit(doc_id)} "
+                 "ORDER BY line_no NULLS FIRST, field_name")
+
+
+def queue_rows() -> list[dict]:
+    return query(f"""SELECT e.*, v.name vendor_name, d.source, d.file_name
+                     FROM {DB}.exceptions e
+                     LEFT JOIN {DB}.vendors v ON v.vendor_id = e.vendor_id
+                     LEFT JOIN {DB}.documents d ON d.doc_id = e.doc_id
+                     ORDER BY e.priority, e.amount_at_risk DESC""")
+
+
+@lru_cache(maxsize=64)
+def _ocr(doc_id: str, processed_at: str) -> tuple[dict, OCRResponse]:
+    raw = pipeline.ocr_json(doc_id)
+    return raw, OCRResponse.model_validate({k: v for k, v in raw.items() if not k.startswith("_")})
+
+
+def ocr(doc: dict) -> tuple[dict, OCRResponse]:
+    """A document's raw OCR 4.1 output and the parsed response, kept per (doc_id, processed_at)."""
+    with LAKE:  # ocr_json may read the lake, and it writes the local cache
+        return _ocr(doc["doc_id"], doc["processed_at"])
+
+
+PDF = threading.Lock()  # PyMuPDF isn't thread-safe
+
+
+@lru_cache(maxsize=64)
+def page_png(sha256: str, s3_uri: str, n: int, dpi: int) -> bytes | None:
+    """Page n (1-based) as PNG, or None past the last page."""
+    with LAKE:
+        data = pipeline.pdf_bytes({"sha256": sha256, "s3_uri": s3_uri})
+    with PDF, pymupdf.open(stream=data, filetype="pdf") as pdf:
+        return pdf[n - 1].get_pixmap(dpi=dpi).tobytes("png") if 1 <= n <= pdf.page_count else None
+
+
+# ---------- background jobs ----------
+
+JOBS: OrderedDict[str, dict] = OrderedDict()  # the 50 most recent, oldest first
+JOBS_LOCK = threading.Lock()
+
+
+def start_job(kind: str, fn, key: str | None = None) -> str:
+    """Run fn(step) in a thread and return the job's id. fn returns the result dict, and wraps each stage in
+    `with step(name, label):` so the UI can show progress. key (a tab's Mistral key) is scrubbed from the error."""
+    job = {"id": secrets.token_hex(8), "kind": kind, "state": "running", "steps": [], "result": None, "error": None}
+    with JOBS_LOCK:
+        JOBS[job["id"]] = job
+        while len(JOBS) > 50:
+            JOBS.popitem(last=False)
+
+    @contextmanager
+    def step(name: str, label: str):
+        s = {"name": name, "label": label, "state": "running", "seconds": None}
+        with JOBS_LOCK:
+            job["steps"].append(s)
+        start, state = time.perf_counter(), "error"
+        try:
+            yield s
+            state = "done"
+        finally:
+            with JOBS_LOCK:
+                s.update(state=state, seconds=round(time.perf_counter() - start, 1))
+
+    def run() -> None:
+        result = error = None
+        try:
+            result = fn(step)
+        except BaseException as e:  # SystemExit too (get_client exits without a key): a job must never stay running
+            log_exception(key)
+            error = mistral_error(e, key) if getattr(e, "status_code", None) else scrub(str(e) or type(e).__name__, key)
+        clear_cache()  # before the job reads as finished, so the UI's reload sees the new data
+        with JOBS_LOCK:
+            job.update(state="error" if error else "done", result=result, error=error[:500] if error else None)
+
+    threading.Thread(target=run, name=f"job-{kind}", daemon=True).start()
+    return job["id"]
+
+
+# ---------- Mistral client: the tab's key, or the project's ----------
+
+
+class MissingKey(Exception):
+    """No Mistral API key in the request, and none set for the project."""
+
+
+def tab_key(x_mistral_key: str | None = Header(None)) -> str | None:
+    """The key a browser tab sent in X-Mistral-Key, if any. It lives only in this request and its job."""
+    if x_mistral_key is not None and not API_KEY.fullmatch(x_mistral_key):
+        raise HTTPException(400, "That doesn't look like a Mistral API key.")
+    return x_mistral_key
+
+
+@cache
+def project_client():
+    """The client for the project's MISTRAL_API_KEY, kept for the life of the process (changing a project environment
+    variable restarts the Application). Nothing is cached while there's no key."""
     try:
         return get_client()
-    except SystemExit as e:
-        st.error(f"Mistral API key problem: {e}")
-        st.stop()
+    except SystemExit:  # get_client exits with instructions when no key is set
+        raise MissingKey(NO_KEY) from None
 
 
-@st.cache_data(show_spinner=False)
-def pdf(sha256: str, s3_uri: str) -> bytes:
-    return pipeline.pdf_bytes({"sha256": sha256, "s3_uri": s3_uri})
+@contextmanager
+def mistral(key: str | None):
+    """A client for the tab's key, closed afterwards; else the project's client."""
+    if key:
+        with Mistral(api_key=key) as client:
+            yield client
+    else:
+        yield project_client()
 
 
-@st.cache_data(show_spinner=False)
-def ocr(doc_id: str, processed_at: str) -> OCRResponse:
-    raw = {k: v for k, v in pipeline.ocr_json(doc_id).items() if not k.startswith("_")}
-    return OCRResponse.model_validate(raw)
+def env_key() -> bool:
+    """Whether the project has a Mistral key: the lookup get_client does (never the value)."""
+    load_dotenv(ROOT / ".env")
+    return bool((os.getenv("MISTRAL_API") or os.getenv("MISTRAL_API_KEY") or "").strip().strip("\"'"))
 
 
-def documents() -> pd.DataFrame:
-    return q(f"""SELECT d.doc_id, d.file_name, d.s3_uri, d.sha256, d.source, d.status,
-                        CAST(d.ingested_at AS STRING) ingested_at, CAST(d.processed_at AS STRING) processed_at,
-                        h.vendor_name, h.invoice_number, h.total
-                 FROM {DB}.documents d LEFT JOIN {DB}.invoice_header h ON h.doc_id = d.doc_id ORDER BY d.doc_id""")
+def scrub(text: str, key: str | None) -> str:
+    return text.replace(key, "[key]") if key else text
 
 
-def extractions(doc_id: str) -> pd.DataFrame:
-    return q(f"SELECT * FROM {DB}.extractions WHERE doc_id = {lake.lit(doc_id)} ORDER BY line_no NULLS FIRST, field_name")
+def mistral_error(e: BaseException, key: str | None) -> str:
+    """A short message for a failed Mistral call, without the tab's key. SDK HTTP errors carry .status_code."""
+    if getattr(e, "status_code", None) in (401, 403):
+        return "Mistral rejected this key."
+    return scrub(f"Mistral API call failed: {(str(e) or type(e).__name__).splitlines()[0][:200]}", key)
 
 
-@st.cache_data(show_spinner=False)
-def render_page(sha: str, _pdf: bytes, index: int, dpi: int) -> Image.Image:
-    with pymupdf.open(stream=_pdf, filetype="pdf") as doc:
-        pix = doc[index].get_pixmap(dpi=dpi)
-        return Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+def log_exception(key: str | None = None) -> None:
+    print(scrub(traceback.format_exc(), key), file=sys.stderr, flush=True)
 
 
-# ---------- drawing ----------
+# ---------- OCR helpers ----------
 
 
 def blocks(page) -> list:
+    """Layout blocks with coordinates (UnknownBlock entries have none)."""
     return [b for b in (page.blocks or []) if getattr(b, "top_left_x", None) is not None]
 
 
@@ -97,79 +285,34 @@ def words(page) -> list:
     return (cs.word_confidence_scores or []) if cs else []
 
 
-def draw_blocks(img: Image.Image, page) -> Image.Image:
-    dims = page.dimensions
-    scale = img.width / dims.width if dims else 1.0
-    out = img.copy()
-    overlay = Image.new("RGBA", out.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    font = ImageFont.load_default(size=max(11, int(11 * scale)))
-    for b in blocks(page):
-        color = BLOCK_COLORS.get(b.type, GRAY)
-        rgb = tuple(int(color[i : i + 2], 16) for i in (1, 3, 5))
-        box = [b.top_left_x * scale, b.top_left_y * scale, b.bottom_right_x * scale, b.bottom_right_y * scale]
-        draw.rectangle(box, fill=rgb + (28,), outline=rgb + (255,), width=2)
-        tw = draw.textlength(b.type, font=font)
-        label = [box[0], box[1] - font.size - 4, box[0] + tw + 8, box[1]]
-        if label[1] < 0:
-            label = [box[0], box[1], box[0] + tw + 8, box[1] + font.size + 4]
-        draw.rectangle(label, fill=rgb + (235,))
-        draw.text((label[0] + 4, label[1] + 1), b.type, fill=(255, 255, 255, 255), font=font)
-    return Image.alpha_composite(out.convert("RGBA"), overlay).convert("RGB")
-
-
-def draw_evidence(img: Image.Image, marks: list[tuple[list[float], str, str, bool]]) -> Image.Image:
-    """marks: (bbox as page fractions, label, hex color, primary)."""
-    out = img.convert("RGBA")
-    overlay = Image.new("RGBA", out.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    font = ImageFont.load_default(size=max(12, img.width // 70))
-    for bbox, label, color, primary in sorted(marks, key=lambda m: m[3]):
-        rgb = tuple(int(color[i : i + 2], 16) for i in (1, 3, 5))
-        pad = 4 if primary else 2
-        box = [bbox[0] * img.width - pad, bbox[1] * img.height - pad, bbox[2] * img.width + pad, bbox[3] * img.height + pad]
-        draw.rectangle(box, fill=rgb + ((40 if primary else 18),), outline=rgb + (255,), width=4 if primary else 2)
-        if primary:
-            tw = draw.textlength(label, font=font)
-            tag = [box[0], box[1] - font.size - 8, box[0] + tw + 12, box[1]]
-            draw.rectangle(tag, fill=rgb + (240,))
-            draw.text((tag[0] + 6, tag[1] + 3), label, fill=(255, 255, 255, 255), font=font)
-    return Image.alpha_composite(out, overlay).convert("RGB")
-
-
-def legend(types) -> None:
-    chips = "".join(
-        f'<span class="chip"><span class="sw" style="background:{BLOCK_COLORS.get(t, GRAY)}"></span>{t}</span>'
-        for t in sorted(types)
-    )
-    st.markdown(chips, unsafe_allow_html=True)
-
-
-def highlighted_markdown(page, threshold: float) -> str:
-    """Page markdown with words below `threshold` confidence wrapped in <mark>, then tables/images inlined."""
+def marked_markdown(page) -> tuple[str, list[float]]:
+    """Page markdown, tables inlined, with each word below MIN_CONFIDENCE between sentinels: "\\ue000{n}\\ue001" before
+    word n and "\\ue002" after it. Returns it and each marked word's confidence. The front end escapes the text and
+    turns the sentinels into <mark>, so no HTML is built from OCR output here."""
     md = page.markdown
     protected = [m.span() for m in MD_PLACEHOLDER.finditer(md)]
     spans = []
-    for w in words(page):
+    for w in sorted(words(page), key=lambda w: w.start_index):
         core = w.text.strip()
-        if w.confidence >= threshold or not WORD_OK.match(core) or not re.search(r"\w", core):
+        if w.confidence >= MIN_CONFIDENCE or not WORD_OK.match(core) or not re.search(r"\w", core):
             continue
         start = w.start_index + (len(w.text) - len(w.text.lstrip()))
         end = start + len(core)
         if md[start:end] != core or any(s < end and start < e for s, e in protected):
             continue
-        spans.append((start, end, w.confidence))
-    for start, end, conf in sorted(spans, reverse=True):
-        md = f'{md[:start]}<mark class="lowconf" title="confidence {conf:.2f}">{md[start:end]}</mark>{md[end:]}'
-    return page_markdown(page.model_copy(update={"markdown": md}), inline_images=True)
+        if spans and start < spans[-1][1]:  # overlaps the previous marked word
+            continue
+        spans.append((start, end, round(w.confidence, 4)))
+    parts, pos = [], 0
+    for n, (start, end, _) in enumerate(spans):
+        parts += [md[pos:start], f"\ue000{n}\ue001", md[start:end], "\ue002"]
+        pos = end
+    marked = "".join(parts) + md[pos:]
+    return page_markdown(page.model_copy(update={"markdown": marked})), [conf for *_, conf in spans]
 
 
-def show_md(md: str) -> None:
-    # Escape $ so dollar amounts aren't rendered as LaTeX.
-    st.markdown(md.replace("$", r"\$"), unsafe_allow_html=True)
-
-
-def low_conf_words(resp, n=15) -> pd.DataFrame:
+def least_certain(resp, n: int = 15) -> list[dict]:
+    """The n lowest-confidence words with ±50 characters of context: where a reviewer should look first."""
     rows = []
     for p in resp.pages:
         for w in words(p):
@@ -177,429 +320,380 @@ def low_conf_words(resp, n=15) -> pd.DataFrame:
             if not re.search(r"[A-Za-z0-9]", core) or not WORD_OK.match(core):
                 continue
             s = w.start_index
-            ctx = p.markdown[max(0, s - 50) : s + len(w.text) + 50].replace("\n", " ")
-            rows.append({"Page": p.index + 1, "Word": core, "Confidence": w.confidence, "Context": f"…{ctx}…"})
-    rows.sort(key=lambda r: r["Confidence"])
-    return pd.DataFrame(rows[:n])
+            context = p.markdown[max(0, s - 50) : s + len(w.text) + 50].replace("\n", " ")
+            rows.append({"page": p.index + 1, "word": core, "confidence": w.confidence, "context": f"…{context}…"})
+    return sorted(rows, key=lambda r: r["confidence"])[:n]
 
 
-def has(v) -> bool:
-    """True for a real value (pandas turns missing numbers into NaN, which is truthy)."""
-    return v is not None and not (isinstance(v, float) and pd.isna(v)) and v != ""
+def page_json(page) -> dict:
+    dims, cs = page.dimensions, page.confidence_scores
+    markdown, marks = marked_markdown(page)
+    boxes = []
+    if dims:  # block coordinates are pixels of the page image OCR 4.1 saw; the UI gets page fractions
+        boxes = [{"type": b.type, "bbox": [round(b.top_left_x / dims.width, 4), round(b.top_left_y / dims.height, 4),
+                                           round(b.bottom_right_x / dims.width, 4),
+                                           round(b.bottom_right_y / dims.height, 4)]} for b in blocks(page)]
+    return {"number": page.index + 1, "width": dims and dims.width, "height": dims and dims.height,
+            "dpi": dims and dims.dpi, "avg_confidence": cs.average_page_confidence_score if cs else None,
+            "min_confidence": cs.minimum_page_confidence_score if cs else None, "blocks": boxes,
+            "markdown": markdown, "marks": marks}
 
 
-def money(x) -> str:
-    return f"${float(x):,.2f}" if has(x) else ""
-
-
-# ---------- sidebar ----------
-
-VIEWS = ["Action queue", "Ingest an invoice", "Under the hood"]
-with st.sidebar:
-    st.markdown(brand.sidebar(), unsafe_allow_html=True)
-    view = st.radio("View", VIEWS, key="view", label_visibility="collapsed")
-    st.divider()
-    st.caption(f"OCR: `{OCR_MODEL}` (schema mode)  \nData: Iceberg `{DB}` via Impala  \nFiles: `{S3_ROOT}`  \n"
-               f"Business date: {AS_OF:%b %d, %Y}")
-    if st.button("Refresh data", width="stretch"):
-        refresh()
-        st.rerun()
-    st.markdown("<div class='legal'>Cloudera and Mistral AI logos are trademarks of their owners. "
-                "Vendors and invoices are fictitious.</div>", unsafe_allow_html=True)
-
-
-# ---------- 1. Action queue ----------
-
-
-def evidence_image(doc: pd.Series, exc: dict, fields: dict, tone: str):
-    keys = explain.evidence_keys(exc)
-    primary = fields.get(keys[0])
-    resp = ocr(doc["doc_id"], doc["processed_at"])
-    n_pages = len(resp.pages)
-    page_no = int(primary["page"]) if primary is not None and has(primary.get("page")) else 1
-    if n_pages > 1:
-        page_no = st.segmented_control("Page", list(range(1, n_pages + 1)), default=page_no, key=f"pg_{doc['doc_id']}_{exc['rule_code']}") or page_no
-    data = pdf(doc["sha256"], doc["s3_uri"])
-    img = render_page(doc["sha256"], data, page_no - 1, 130)
+def evidence(row: dict, fields: dict) -> dict:
+    """The boxes to draw for an exception (bbox as page fractions): the rule's field first (the primary), then the
+    fields that support it, on whichever pages they were found; the page to open, and the primary's caption."""
+    keys = explain.evidence_keys(row)
     marks = []
     for i, key in enumerate(keys):
         f = fields.get(key)
-        if f is None or not has(f.get("bbox")) or not has(f.get("page")) or int(f["page"]) != page_no:
-            continue
-        conf = f.get("confidence")
-        label = f"{key[0].replace('_', ' ')}" + (f" · {conf:.2f}" if has(conf) else "")
-        marks.append((json.loads(f["bbox"]), label, TONE[tone] if i == 0 else brand.EVIDENCE, i == 0))
-    st.image(draw_evidence(img, marks), width="stretch")
-    if primary is not None and has(primary.get("bbox")):
-        conf = primary.get("confidence")
-        st.caption(f"Evidence: page {int(primary['page'])}"
-                   + (f" · OCR confidence {conf:.2f}" if has(conf) else "")
-                   + f" · {primary['model']} · {primary['extracted_at']}  \nSource file: `{doc['s3_uri']}`")
+        if f and f["bbox"] and f["page"]:
+            conf = f["confidence"]
+            marks.append({"page": f["page"], "bbox": json.loads(f["bbox"]), "primary": i == 0,
+                          "label": key[0].replace("_", " ") + (f" · {conf:.2f}" if conf is not None else "")})
+    primary = fields.get(keys[0])
+    located = bool(primary and primary["bbox"] and primary["page"])
+    return {"page": primary["page"] if primary and primary["page"] else 1, "marks": marks,
+            "caption": {k: primary[k] for k in ("page", "confidence", "model", "extracted_at")} if located else None}
 
 
-def action_queue() -> None:
-    docs = documents()
-    exc = q(f"""SELECT e.*, v.name vendor_name, d.source, d.file_name
-                FROM {DB}.exceptions e
-                LEFT JOIN {DB}.vendors v ON v.vendor_id = e.vendor_id
-                LEFT JOIN {DB}.documents d ON d.doc_id = e.doc_id
-                ORDER BY e.priority, e.amount_at_risk DESC""")
-    n_fields = int(q(f"SELECT COUNT(*) n FROM {DB}.extractions")["n"].iloc[0])
-    processed = int((docs["status"] == "processed").sum()) if not docs.empty else 0
+def as_text(v) -> str | None:
+    return None if v is None else str(v)
 
-    st.markdown(brand.header("Invoices that need action",
-                             "Supplier invoices read by Mistral OCR 4.1, checked against governed data in Cloudera."),
-                unsafe_allow_html=True)
-    risk = exc[exc["priority"] <= 3] if not exc.empty else exc
-    savings = exc[exc["rule_code"] == "DISCOUNT_WINDOW"] if not exc.empty else exc
-    review = exc[exc["rule_code"] == "LOW_CONFIDENCE"] if not exc.empty else exc
-    s1, s2, s3 = st.columns(3)
-    s1.markdown(brand.step(1, "Read", "Mistral OCR 4.1", f"Extracted {n_fields:,} fields from {processed} invoice PDFs "
-                           "in S3, inside this environment."), unsafe_allow_html=True)
-    s2.markdown(brand.step(2, "Join", "Cloudera", "Every field checked against the vendor master, POs, goods receipts "
-                           "and payments in Iceberg (Impala)."), unsafe_allow_html=True)
-    s3.markdown(brand.step(3, "Act", "Together", f"{len(exc)} actions, each linked to the exact spot on the page and "
-                           "to the record that triggered it."), unsafe_allow_html=True)
 
-    def open_architecture():
-        st.session_state["view"] = "Under the hood"
-        st.session_state["uth_tab"] = "Architecture"
+# ---------- API ----------
 
-    st.button("See the reference architecture →", type="tertiary", on_click=open_architecture)
+app = FastAPI(title="Document AI on Cloudera", docs_url=None, redoc_url=None, openapi_url=None)
 
-    k = st.columns(5)
-    k[0].metric("Invoices processed", processed)
-    k[1].metric("Need action", risk["doc_id"].nunique() if not risk.empty else 0)
-    at_risk = risk["amount_at_risk"].astype(float).sum() if not risk.empty else 0
-    to_save = savings["amount_at_risk"].astype(float).sum() if not savings.empty else 0
-    k[2].metric("Dollars at risk", f"${at_risk:,.0f}", help=money(at_risk))
-    k[3].metric("Discounts", f"${to_save:,.0f}", help=money(to_save))
-    k[4].metric("Human review", review["doc_id"].nunique() if not review.empty else 0,
-                help=f"A key field read with OCR confidence below {MIN_CONFIDENCE:.2f}")
 
-    if exc.empty:
-        st.info("No exceptions. Run the pipeline (`python -m ap.pipeline --pending`) or ingest an invoice.")
-        return
-
-    table = pd.DataFrame({
-        "Priority": exc["priority"].map(PRIORITY),
-        "Issue": exc["rule_code"].map(lambda r: explain.RULES.get(r, (r,))[0]),
-        "Vendor": exc["vendor_name"].fillna("(unknown)"),
-        "Invoice": exc["invoice_number"],
-        "Amount": exc["amount_at_risk"].astype(float),
-        "Recommended action": exc["action"],
-        "Doc": exc["doc_id"] + exc["source"].map(lambda s: " (live)" if s == "upload" else ""),
-    })
-    # The selection resets whenever the queue's contents change (key includes them), so a row index never
-    # points at a different invoice after the rules rerun. Without a selection, the last focused invoice stays open.
-    version = abs(hash(tuple(exc["doc_id"] + exc["rule_code"])))
-    sel = st.dataframe(
-        table, hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row", key=f"queue_{version}",
-        column_config={"Amount": st.column_config.NumberColumn(format="$%,.2f"),
-                       "Recommended action": st.column_config.TextColumn(width="large")},
-    )
-    rows = sel.selection.rows if sel and sel.selection else []
-    focus = st.session_state.get("focus")  # (doc_id, rule_code)
-    if rows:
-        i = rows[0]
-    elif focus and ((exc["doc_id"] == focus[0]) & (exc["rule_code"] == focus[1])).any():
-        i = int(((exc["doc_id"] == focus[0]) & (exc["rule_code"] == focus[1])).to_numpy().argmax())
-    elif focus and (exc["doc_id"] == focus[0]).any():
-        i = int((exc["doc_id"] == focus[0]).to_numpy().argmax())
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    """Security and cache headers on every response. And every POST must carry X-DocAI: 1: a browser can't add a custom
+    header to a cross-site request without a CORS preflight, and this server never approves one, so that stops
+    cross-site request forgery."""
+    if request.method not in ("GET", "HEAD") and request.headers.get("x-docai") != "1":
+        response = JSONResponse({"error": "Missing X-DocAI header"}, 403)
+    elif int(request.headers.get("content-length") or 0) > MAX_UPLOAD + 1024 * 1024:  # before it's spooled to disk
+        response = JSONResponse({"error": "The PDF is larger than 25 MB."}, 413)
     else:
-        i = 0
-    st.session_state["focus"] = (exc["doc_id"].iloc[i], exc["rule_code"].iloc[i])
-    e = exc.iloc[i].to_dict()
-    label, how, tone = explain.RULES.get(e["rule_code"], (e["rule_code"], "", "risk"))
-    doc = docs[docs["doc_id"] == e["doc_id"]].iloc[0]
-    fx = extractions(e["doc_id"])
-    fields = {(r["field_name"], None if pd.isna(r["line_no"]) else int(r["line_no"])): r for r in fx.to_dict("records")}
-
-    st.divider()
-    left, right = st.columns([1.15, 1], gap="large")
-    with left:
-        evidence_image(doc, e, fields, tone)
-    with right:
-        st.markdown(f"{brand.tag(label, tone)} "
-                    f"&nbsp; **{e['vendor_name'] or '(unknown vendor)'}** · invoice {e['invoice_number']}",
-                    unsafe_allow_html=True)
-        amount = e["amount_at_risk"]
-        if has(amount):
-            st.markdown(f"### {money(amount)} {'savings' if tone == 'opportunity' else 'at risk'}")
-        st.write(e["detail"])
-        {"risk": st.error, "review": st.warning, "opportunity": st.success}[tone](f"**Action:** {e['action']}")
-
-        st.markdown(f"**The document vs. the record** ({how})")
-        comp = explain.comparison(e, fields)
-        if comp:
-            st.dataframe(
-                pd.DataFrame({
-                    "": [c["what"] for c in comp],
-                    "On the invoice (OCR 4.1)": [c["invoice"] for c in comp],
-                    "In Cloudera": [c["record"] for c in comp],
-                    "Table": [f"{DB}.{c['source']}" if c["source"] else "" for c in comp],
-                    "Match": ["yes" if c["ok"] else "NO" for c in comp],
-                }),
-                hide_index=True, width="stretch",
-            )
-        if e["rule_code"] == "LOW_CONFIDENCE":
-            f = fields.get((e["evidence_field"], None)) or {}
-            with st.form(f"review_{e['doc_id']}_{e['evidence_field']}"):
-                st.markdown(f"**Review:** compare with the highlighted spot on the page and confirm the "
-                            f"{e['evidence_field'].replace('_', ' ')}.")
-                value = st.text_input("Confirmed value", f.get("field_value") or "")
-                if st.form_submit_button("Confirm and re-check", type="primary"):
-                    try:
-                        clean = pipeline.check_value(e["evidence_field"], value)
-                    except ValueError as err:
-                        st.error(str(err))
-                    else:
-                        with st.spinner("Saving the reviewed value and rerunning the rules…"):
-                            pipeline.confirm_field(e["doc_id"], e["evidence_field"], clean, REVIEWER)
-                        refresh()
-                        st.session_state["focus"] = (e["doc_id"], None)
-                        st.rerun()
-        others = exc[(exc["doc_id"] == e["doc_id"]) & (exc.index != exc.index[i])]
-        if not others.empty:
-            st.caption("Also on this invoice: " + ", ".join(explain.RULES.get(r, (r,))[0] for r in others["rule_code"]))
-        with st.expander("How Cloudera found this (SQL over Iceberg)"):
-            st.code(explain.rule_sql(e["rule_code"]), language="sql")
-        with st.expander("Audit trail"):
-            st.markdown(
-                f"- File landed: `{doc['s3_uri']}` at {doc['ingested_at']} (sha256 `{doc['sha256'][:16]}…`)\n"
-                f"- Read by `{OCR_MODEL}` at {doc['processed_at']}; raw output `{pipeline.ocr_uri(doc['doc_id'])}`\n"
-                f"- Fields in `{DB}.extractions` (with page, bounding box and confidence)\n"
-                f"- Exception written to `{DB}.exceptions` at {e['created_at']}"
-            )
+        response = await call_next(request)
+    response.headers.update(SECURITY_HEADERS)
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Content-Security-Policy"] = CSP
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    elif request.url.path.endswith((".js", ".css")):  # a restarted Application must never serve stale modules
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
 
 
-# ---------- 2. Ingest ----------
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request: Request, e: StarletteHTTPException):
+    return JSONResponse({"error": str(e.detail)}, e.status_code, headers=e.headers)
 
 
-def ingest_view() -> None:
-    st.markdown(brand.header("Ingest an invoice",
-                             "A new invoice lands in governed S3, Mistral OCR 4.1 reads it inside the environment, and the "
-                             "same rules check it against enterprise data. The same code runs in the batch Job."),
-                unsafe_allow_html=True)
-    samples = sorted((DATA / "live").glob("*.pdf"))
-    src = st.radio("Source", ["Held-back sample invoices", "Upload a PDF"], horizontal=True)
-    data = name = None
-    if src.startswith("Held"):
-        if samples:
-            pick = st.selectbox("Invoice", samples, format_func=lambda p: p.name)
-            data, name = pick.read_bytes(), pick.name
-        else:
-            st.info("No held-back samples. Run `python -m ap.generate` first.")
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request: Request, e: RequestValidationError):
+    first = (e.errors() or [{}])[0]
+    where = ".".join(str(x) for x in first.get("loc", ())[1:]) or "request"
+    return JSONResponse({"error": f"Invalid {where}: {first.get('msg', 'bad value')}"}, 400)
+
+
+@app.exception_handler(MissingKey)
+async def missing_key(request: Request, e: MissingKey):
+    return JSONResponse({"error": str(e)}, 400)
+
+
+@app.exception_handler(Exception)
+async def crashed(request: Request, e: Exception):
+    # This response skips the middleware, so it brings its own headers. Starlette then re-raises, and uvicorn logs it.
+    message = scrub(f"{type(e).__name__}: {e}", request.headers.get("x-mistral-key"))[:500]
+    return JSONResponse({"error": message}, 500, headers={**SECURITY_HEADERS, "Cache-Control": "no-store"})
+
+
+def samples() -> list[str]:
+    return sorted(p.name for p in (DATA / "live").glob("*.pdf"))
+
+
+class Review(BaseModel):
+    field: str
+    value: str
+
+
+class Question(BaseModel):
+    question: str
+    chat_id: str | None = None
+
+
+@app.get("/api/config")
+def config():
+    """Settings for the UI. No lake access, so it works while Impala is down."""
+    rules = {code: {"label": label, "how": how, "tone": tone} for code, (label, how, tone) in explain.RULES.items()}
+    return {"ocr_model": OCR_MODEL, "chat_model": CHAT_MODEL, "db": DB, "s3_root": S3_ROOT, "landing": lake.LANDING,
+            "as_of": AS_OF.isoformat(), "min_confidence": MIN_CONFIDENCE, "price_per_page": PRICE_PER_PAGE,
+            "reviewer": REVIEWER, "env_key": env_key(), "rules": rules, "priorities": PRIORITY,
+            "steps": architecture.STEPS, "samples": samples()}
+
+
+@app.get("/api/queue")
+def queue():
+    rows = queue_rows()
+    risk = [r for r in rows if r["priority"] <= 3]
+    discounts = [r for r in rows if r["rule_code"] == "DISCOUNT_WINDOW"]
+    return {"kpis": {"processed": sum(d["status"] == "processed" for d in documents()),
+                     "fields": query(f"SELECT COUNT(*) n FROM {DB}.extractions")[0]["n"],
+                     "actions": len(rows),
+                     "need_action": len({r["doc_id"] for r in risk}),
+                     "at_risk": round(sum(r["amount_at_risk"] or 0 for r in risk), 2),
+                     "discounts": round(sum(r["amount_at_risk"] or 0 for r in discounts), 2),
+                     "review": len({r["doc_id"] for r in rows if r["rule_code"] == "LOW_CONFIDENCE"})},
+            "rows": rows}
+
+
+@app.get("/api/exception")
+def exception_detail(doc_id: str, rule_code: str, evidence_field: str):
+    """The detail pane for the first queue row with this doc, rule and evidence field."""
+    check(DOC_ID.fullmatch(doc_id), "Invalid doc_id.")
+    check(rule_code in explain.RULES, "Unknown rule_code.")
+    check(EVIDENCE_FIELD.fullmatch(evidence_field), "Invalid evidence_field.")
+    rows = queue_rows()
+    wanted = (doc_id, rule_code, evidence_field)
+    row = next((r for r in rows if (r["doc_id"], r["rule_code"], r["evidence_field"]) == wanted), None)
+    if row is None:
+        raise HTTPException(404, "That exception is not in the queue.")
+    doc = document(doc_id)
+    fields = {(f["field_name"], f["line_no"]): f for f in extractions(doc_id)}
+    with LAKE:
+        comparison = explain.comparison(row, fields)
+    _, resp = ocr(doc)
+    label, how, tone = explain.RULES[rule_code]
+    reviewed = fields.get((evidence_field, None)) or {}
+    return {
+        "row": row, "label": label, "how": how, "tone": tone, "document": doc, "page_count": len(resp.pages),
+        "evidence": evidence(row, fields),
+        "comparison": [{"what": c["what"], "invoice": as_text(c["invoice"]), "record": as_text(c["record"]),
+                        "table": f"{DB}.{c['source']}" if c["source"] else "", "ok": bool(c["ok"])}
+                       for c in comparison],
+        "review": ({"field": evidence_field, "value": reviewed.get("field_value") or ""}
+                   if rule_code == "LOW_CONFIDENCE" else None),
+        "others": [explain.RULES[r["rule_code"]][0] for r in rows if r["doc_id"] == doc_id and r is not row],
+        "rule_sql": explain.rule_sql(rule_code),
+        "audit": {"s3_uri": doc["s3_uri"], "ingested_at": doc["ingested_at"], "sha256": doc["sha256"],
+                  "ocr_model": OCR_MODEL, "processed_at": doc["processed_at"], "ocr_uri": pipeline.ocr_uri(doc_id),
+                  "extractions_table": f"{DB}.extractions", "exceptions_table": f"{DB}.exceptions",
+                  "created_at": row["created_at"]},
+    }
+
+
+@app.get("/api/docs")
+def docs():
+    return {"docs": documents()}
+
+
+@app.get("/api/docs/{doc_id}")
+def doc_detail(doc_id: str):
+    """The "One document" view: what OCR 4.1 returned for a processed document, and the fields extracted from it."""
+    doc = document(doc_id, processed=True)
+    raw, resp = ocr(doc)
+    pages = [page_json(p) for p in resp.pages]
+    scores = [p.confidence_scores.average_page_confidence_score for p in resp.pages if p.confidence_scores]
+    keep = ("field_name", "line_no", "field_value", "confidence", "page", "model")
+    return {
+        "document": doc, "page_count": len(pages), "seconds": raw.get("_seconds"),
+        "avg_confidence": sum(scores) / len(scores) if scores else None,
+        "block_count": sum(len(p["blocks"]) for p in pages), "cost": len(pages) * PRICE_PER_PAGE,
+        "pages": pages,
+        "fields": [{k: f[k] for k in keep} for f in extractions(doc_id)],
+        "least_certain": least_certain(resp),
+        "schema": ANNOTATION_FORMAT, "prompt": INVOICE_PROMPT,
+        "chat": {"model": CHAT_MODEL, "system_prompt": SYSTEM_PROMPT.format(documents=doc_id),
+                 "tools": tool_spec([doc_id]), "suggestions": SUGGESTIONS},
+    }
+
+
+@app.get("/api/docs/{doc_id}/ocr.json")
+def doc_ocr(doc_id: str):
+    raw, _ = ocr(document(doc_id, processed=True))
+    return JSONResponse(raw)
+
+
+@app.get("/api/docs/{doc_id}/pages/{n}.png")
+def doc_page(doc_id: str, n: int, dpi: int = 160):
+    """Page n as PNG. The front end adds v=<sha256 prefix> to the URL, so the browser may keep it."""
+    doc = document(doc_id)
+    png = page_png(doc["sha256"], doc["s3_uri"], n, max(72, min(220, dpi)))
+    if png is None:
+        raise HTTPException(404, f"{doc_id} has no page {n}.")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.post("/api/docs/{doc_id}/confirm", status_code=202)
+def confirm(doc_id: str, body: Review):
+    """Human review (a job): store the confirmed value and rerun the rules."""
+    document(doc_id)
+    check(body.field in HEADER_FIELDS, "Unknown field.")
+    check(len(body.value) <= 200, "The value is too long (200 characters at most).")
+    try:
+        value = pipeline.check_value(body.field, body.value)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+
+    def run(step):
+        with step("Save and re-check", "Saving the reviewed value and rerunning the rules…"), LAKE:
+            pipeline.confirm_field(doc_id, body.field, value, REVIEWER)
+        return {"doc_id": doc_id, "field": body.field, "value": value}
+
+    return {"job_id": start_job("confirm", run)}
+
+
+@app.post("/api/ingest", status_code=202)
+def ingest(sample: str | None = Form(None), file: UploadFile | None = File(None), key: str | None = Depends(tab_key)):
+    """Live path (a job): land a held-back sample or an uploaded PDF in S3, read it with OCR 4.1, rerun the rules."""
+    check((sample is None) != (file is None), "Send either a sample name or a PDF file.")
+    if sample is not None:
+        check(sample in samples(), "Unknown sample.")
+        data, name = (DATA / "live" / sample).read_bytes(), sample
     else:
-        f = st.file_uploader("Invoice PDF", type="pdf")
-        if f:
-            data, name = f.getvalue(), f.name
-    if data and st.button("Ingest and check", type="primary"):
-        times = {}
-        with st.status("Processing…", expanded=True) as status:
-            t = time.perf_counter()
-            st.write(f"Landing the PDF in `{pipeline.lake.LANDING}` (access governed by SDX)…")
-            doc_id = pipeline.land(data, name)
-            times["Land in S3"] = time.perf_counter() - t
-            t = time.perf_counter()
-            st.write(f"Mistral OCR 4.1 is reading `{doc_id}` with the invoice schema…")
-            pipeline.process(pipeline.documents(f"doc_id = {lake.lit(doc_id)}"))
-            times["OCR 4.1 + evidence"] = time.perf_counter() - t
-            t = time.perf_counter()
-            st.write("Joining every field against vendors, POs, receipts and payments in Iceberg…")
-            pipeline.run_rules()
-            times["Rules in Impala"] = time.perf_counter() - t
-            status.update(label=f"Done: {doc_id}", state="complete")
-        refresh()
-        st.session_state["ingested"] = (doc_id, times)
-    if "ingested" in st.session_state:
-        doc_id, times = st.session_state["ingested"]
-        st.caption(" · ".join(f"{k} {v:.1f}s" for k, v in times.items()))
-        found = q(f"SELECT rule_code, detail, amount_at_risk, action FROM {DB}.exceptions WHERE doc_id = {lake.lit(doc_id)}")
-        if found.empty:
-            st.success(f"`{doc_id}` passed every check: ready to pay on its due date.")
-        else:
-            for r in found.to_dict("records"):
-                label, _, tone = explain.RULES.get(r["rule_code"], (r["rule_code"], "", "risk"))
-                {"risk": st.error, "review": st.warning, "opportunity": st.success}[tone](
-                    f"**{label}** {money(r['amount_at_risk'])}: {r['detail']}  \n{r['action']}")
+        data = file.file.read(MAX_UPLOAD + 1)
+        check(len(data) <= MAX_UPLOAD, "The PDF is larger than 25 MB.")
+        check(data.startswith(b"%PDF-"), "That file isn't a PDF.")
+        name = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(file.filename or "").name)[:100]
+        name = name if name.lower().endswith(".pdf") else f"{name}.pdf"
 
-        def open_in_queue():
-            st.session_state["view"] = "Action queue"
-            st.session_state["focus"] = (doc_id, None)
+    def run(step):
+        with mistral(key) as client, LAKE:  # without a key the job fails here, before anything lands
+            with step("Land in S3", f"Landing the PDF in `{lake.LANDING}` (access governed by SDX)…") as land:
+                doc_id = pipeline.land(data, name)
+            with step("OCR 4.1 + evidence", f"Mistral OCR 4.1 is reading `{doc_id}` with the invoice schema…") as read:
+                pipeline.process(pipeline.documents(f"doc_id = {lake.lit(doc_id)}"), client=client)
+            with step("Rules in Impala",
+                      "Joining every field against vendors, POs, receipts and payments in Iceberg…") as rules:
+                pipeline.run_rules()
+            found = fetch(f"SELECT rule_code, detail, amount_at_risk, action, evidence_field FROM {DB}.exceptions "
+                          f"WHERE doc_id = {lake.lit(doc_id)} ORDER BY priority, amount_at_risk DESC")
+        labels = {code: {"label": label, "tone": tone} for code, (label, _, tone) in explain.RULES.items()}
+        return {"doc_id": doc_id, "times": {s["name"]: s["seconds"] for s in (land, read, rules)},
+                "exceptions": [{**r, **labels[r["rule_code"]]} for r in found]}
 
-        st.button("Open in the action queue", on_click=open_in_queue, disabled=found.empty)
+    return {"job_id": start_job("ingest", run, key)}
 
 
-# ---------- 3. Under the hood ----------
+@app.post("/api/reset", status_code=202)
+def reset():
+    def run(step):
+        with step("Remove live uploads", "Cleaning up…"), LAKE:
+            return {"removed": pipeline.reset_uploads()}
+
+    return {"job_id": start_job("reset", run)}
 
 
-@st.cache_data
+@app.post("/api/evaluate", status_code=202)
+def score():
+    def run(step):
+        with step("Score", "Scoring…"), LAKE:
+            r = evaluate()
+        misses = [{"doc_id": d, "field": f, "expected": as_text(e), "extracted": as_text(x), "caught": d in r["review"]}
+                  for d, f, e, x in r["misses"]]
+        return {"docs": r["docs"], "fields": r["fields"], "field_accuracy": r["field_accuracy"], "review": r["review"],
+                "misses": misses, "queue": r["queue"], "planted_ok": sum(q["status"] == "ok" for q in r["queue"]),
+                "planted_total": len(r["queue"])}
+
+    return {"job_id": start_job("evaluate", run)}
+
+
+@app.get("/api/jobs/{job_id}")
+def job_status(job_id: str):
+    check(HEX_ID.fullmatch(job_id), "Invalid job id.")
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(404, "Unknown job.")
+        return {**job, "steps": [dict(s) for s in job["steps"]]}
+
+
+CHATS: OrderedDict[str, dict] = OrderedDict()  # chat_id -> {"doc_id", "messages"}, the 100 most recent
+CHATS_LOCK = threading.Lock()
+
+
+@app.post("/api/docs/{doc_id}/chat")
+def chat(doc_id: str, body: Question, key: str | None = Depends(tab_key)):
+    """Ask the invoice: the chat model with a read_document tool over the document's OCR text."""
+    question = body.question.strip()
+    check(1 <= len(question) <= 2000, "Ask a question of 1 to 2000 characters.")
+    check(body.chat_id is None or HEX_ID.fullmatch(body.chat_id), "Invalid chat_id.")
+    _, resp = ocr(document(doc_id, processed=True))
+    with CHATS_LOCK:
+        chat_id = body.chat_id
+        if chat_id not in CHATS or CHATS[chat_id]["doc_id"] != doc_id:  # new, forgotten, or another document's
+            chat_id = secrets.token_hex(8)
+            system = {"role": "system", "content": SYSTEM_PROMPT.format(documents=doc_id)}
+            CHATS[chat_id] = {"doc_id": doc_id, "messages": [system]}
+            while len(CHATS) > 100:
+                CHATS.popitem(last=False)
+        CHATS.move_to_end(chat_id)
+        conv = CHATS[chat_id]
+    # ask() adds the turns to the list it gets: give it a copy, kept only once the model has answered, so a failed
+    # turn is never sent again.
+    messages = [*conv["messages"], {"role": "user", "content": question}]
+    with mistral(key) as client:  # a missing key is a 400 before anything is sent
+        try:
+            answer, calls = ask(client, messages, {doc_id: doc_for_chat(resp, page_markdown)})
+        except Exception as e:
+            log_exception(key)
+            return JSONResponse({"error": mistral_error(e, key)}, 502)
+    conv["messages"] = messages
+    return {"chat_id": chat_id, "answer": answer, "calls": calls}
+
+
+@app.post("/api/mistral/check")
+def check_key(key: str | None = Depends(tab_key)):
+    """Whether a key works and can use OCR 4.1 (the sidebar's "Use in this tab")."""
+    with mistral(key) as client:
+        try:
+            ids = {m.id for m in client.models.list().data or []}
+        except Exception as e:
+            log_exception(key)
+            return JSONResponse({"error": mistral_error(e, key)}, 502)
+    return {"ok": True, "ocr_model": OCR_MODEL, "ocr_available": OCR_MODEL in ids}
+
+
+@app.post("/api/refresh")
+def refresh():
+    clear_cache()
+    return {"ok": True}
+
+
+@app.get("/api/lake")
+def lake_tables():
+    counts = query(" UNION ALL ".join(f"SELECT '{t}' AS t, COUNT(*) AS n FROM {DB}.{t}" for t in TABLES))
+    n = {r["t"]: r["n"] for r in counts}
+    return {"s3_root": S3_ROOT, "db": DB, "rules_sql": pipeline.RULES.read_text(),
+            "tables": [{"table": f"{DB}.{t}", "kind": "Enterprise data" if i < 5 else "Document AI", "rows": n.get(t),
+                        "comment": comment} for i, (t, (comment, _)) in enumerate(TABLES.items())]}
+
+
+@cache
 def architecture_svg() -> str:
     return architecture.render_svg()
 
 
-def under_the_hood() -> None:
-    st.markdown(brand.header("Under the hood", "What OCR 4.1 returned, where the data lives, and how well it scores."),
-                unsafe_allow_html=True)
-    t_arch, t_doc, t_lake, t_eval = st.tabs(["Architecture", "One document", "Data lake & rules", "Accuracy"], key="uth_tab")
-    with t_arch:
-        st.image(architecture_svg(), width="stretch")  # an image gets Streamlit's full-screen button on hover
-        st.download_button("Download SVG", architecture_svg(), "document-ai-reference-architecture.svg", "image/svg+xml",
-                           type="tertiary")
-        st.markdown("\n".join(f"{i}. {step}" for i, step in enumerate(architecture.STEPS, 1)))
-        st.caption("Product names and logos are trademarks of their respective owners.")
-    with t_doc:
-        docs = documents()
-        docs = docs[docs["status"] == "processed"]
-        if docs.empty:
-            st.info("No processed documents yet.")
-        else:
-            document_detail(docs)
-    with t_lake:
-        lake_view()
-    with t_eval:
-        st.write("The generator knows the true value of every field and every planted issue, so the pipeline can be "
-                 "scored end to end.")
-        if st.button("Score against ground truth"):
-            from ap.evaluate import evaluate
-            with st.spinner("Scoring…"):
-                st.session_state["eval"] = evaluate()
-        r = st.session_state.get("eval")
-        if r:
-            ok = sum(x["status"] == "ok" for x in r["queue"])
-            e1, e2, e3 = st.columns(3)
-            e1.metric("Field accuracy", f"{r['field_accuracy']:.1%}", help=f"{r['fields']:,} fields in {r['docs']} documents")
-            e2.metric("Planted issues found", f"{ok} / {len(r['queue'])}")
-            e3.metric("Routed to review", len(r["review"]))
-            if r["misses"]:
-                st.dataframe(pd.DataFrame(r["misses"], columns=["Doc", "Field", "Expected", "Extracted"]).assign(
-                    **{"Caught by review": lambda d: d["Doc"].isin(r["review"])}), hide_index=True, width="stretch")
+@app.get("/api/architecture.svg")
+def architecture_view():
+    return Response(architecture_svg(), media_type="image/svg+xml", headers={"Cache-Control": "no-cache"})
 
 
-def document_detail(docs: pd.DataFrame) -> None:
-    labels = {r["doc_id"]: f"{r['doc_id']} · {r['vendor_name']} · {r['invoice_number']}" for r in docs.to_dict("records")}
-    doc_id = st.selectbox("Document", list(labels), format_func=labels.get)
-    doc = docs[docs["doc_id"] == doc_id].iloc[0]
-    resp = ocr(doc_id, doc["processed_at"])
-    pages = resp.pages
-    data = pdf(doc["sha256"], doc["s3_uri"])
-    avg_conf = sum(p.confidence_scores.average_page_confidence_score for p in pages) / len(pages)
-    raw = pipeline.ocr_json(doc_id)
-    k = st.columns(5)
-    k[0].metric("Pages", len(pages))
-    k[1].metric("OCR + extraction", f"{raw.get('_seconds', 0):.1f}s")
-    k[2].metric("Avg confidence", f"{avg_conf:.1%}")
-    k[3].metric("Layout blocks", sum(len(blocks(p)) for p in pages))
-    k[4].metric("Est. cost", f"${len(pages) * PRICE_PER_PAGE:.3f}")
-    page_no = st.segmented_control("Page", list(range(1, len(pages) + 1)), default=1, key=f"utp_{doc_id}") if len(pages) > 1 else 1
-    page = pages[(page_no or 1) - 1]
-
-    t_side, t_fields, t_ask, t_conf, t_json = st.tabs(["Page & layout", "Extracted fields", "Ask the invoice", "Confidence", "Raw JSON"])
-    with t_side:
-        left, right = st.columns(2, gap="large")
-        with left:
-            dpi = page.dimensions.dpi if page.dimensions else 100
-            st.image(draw_blocks(render_page(doc["sha256"], data, page.index, dpi * 2), page), width="stretch")
-            legend({b.type for b in blocks(page)})
-        with right, st.container(height=900, border=True):
-            show_md(highlighted_markdown(page, MIN_CONFIDENCE))
-    with t_fields:
-        fx = extractions(doc_id)
-        st.markdown("**Context sent to OCR 4.1:** a JSON schema (`document_annotation_format`, each field description is an "
-                    "instruction) and a prompt (`document_annotation_prompt`). Page, box and confidence come from OCR 4.1's "
-                    "layout blocks and word scores.")
-        st.dataframe(
-            fx[["field_name", "line_no", "field_value", "confidence", "page", "model"]].rename(columns={
-                "field_name": "Field", "line_no": "Line", "field_value": "Value", "confidence": "Confidence",
-                "page": "Page", "model": "Extracted by"}),
-            hide_index=True, width="stretch", height=520,
-            column_config={"Confidence": st.column_config.ProgressColumn(format="%.2f", min_value=0, max_value=1)},
-        )
-        c1, c2 = st.columns(2)
-        with c1.expander("Schema (document_annotation_format)"):
-            st.json(ANNOTATION_FORMAT, expanded=False)
-        with c2.expander("Prompt (document_annotation_prompt)"):
-            st.code(INVOICE_PROMPT, language=None, wrap_lines=True)
-    with t_ask:
-        chat(doc_id, resp)
-    with t_conf:
-        conf_df = pd.DataFrame([
-            {"Page": p.index + 1, "Measure": label, "Confidence": getattr(p.confidence_scores, attr)}
-            for p in pages for label, attr in (("Average", "average_page_confidence_score"), ("Lowest word", "minimum_page_confidence_score"))
-        ])
-        base = alt.Chart(conf_df).encode(
-            x=alt.X("Page:O", axis=alt.Axis(labelAngle=0, grid=False)),
-            y=alt.Y("Confidence:Q", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%", gridColor="#F1EBDD")),
-            color=alt.Color("Measure:N", scale=alt.Scale(domain=["Average", "Lowest word"], range=[brand.EVIDENCE, brand.MISTRAL_ORANGE]),
-                            legend=alt.Legend(orient="top", title=None)),
-            tooltip=["Page", "Measure", alt.Tooltip("Confidence:Q", format=".1%")],
-        )
-        st.altair_chart((base.mark_line(strokeWidth=2) + base.mark_point(size=80, filled=True)).properties(height=240), width="stretch")
-        st.markdown("**Least certain words**: where a reviewer should look first")
-        st.dataframe(low_conf_words(resp), hide_index=True, width="stretch",
-                     column_config={"Confidence": st.column_config.ProgressColumn(format="%.2f", min_value=0, max_value=1)})
-    with t_json:
-        st.json(raw, expanded=False)
+# ---------- front end ----------
 
 
-def chat(doc_id: str, resp) -> None:
-    docs = {doc_id: doc_for_chat(resp, page_markdown)}
-    system = SYSTEM_PROMPT.format(documents=", ".join(docs))
-    if st.session_state.get("chat_id") != doc_id:
-        st.session_state.update(chat_id=doc_id, chat_messages=[{"role": "system", "content": system}], chat_log=[])
-    st.markdown(f"`{CHAT_MODEL}` with a system prompt and a `read_document` tool that returns OCR 4.1's text for the "
-                "invoice (Mistral's OCR tool-usage cookbook pattern).")
-    with st.expander("What the assistant was told (system prompt + tool)"):
-        st.code(system, language="markdown", wrap_lines=True)
-        st.json(tool_spec(list(docs)), expanded=False)
-    pending = None
-    for col, s in zip(st.columns(len(SUGGESTIONS)), SUGGESTIONS):
-        if col.button(s, width="stretch", key=f"sugg_{s}"):
-            pending = s
-    with st.container(height=420, border=True):
-        if not st.session_state["chat_log"]:
-            st.caption("Ask a question about this invoice, or pick a suggestion above.")
-        for entry in st.session_state["chat_log"]:
-            with st.chat_message(entry["role"]):
-                show_md(entry["content"])
-                if entry.get("calls"):
-                    with st.expander(f"Tool calls ({len(entry['calls'])})"):
-                        for c in entry["calls"]:
-                            st.code(f'{c["tool"]}(name="{c["name"]}")  → {c["chars"]:,} characters of OCR text', language=None)
-    question = st.chat_input("Ask about this invoice") or pending
-    if question:
-        st.session_state["chat_log"].append({"role": "user", "content": question})
-        st.session_state["chat_messages"].append({"role": "user", "content": question})
-        try:
-            with st.spinner(f"{CHAT_MODEL} is reading…"):
-                answer, calls = ask(client(), st.session_state["chat_messages"], docs)
-            st.session_state["chat_log"].append({"role": "assistant", "content": answer, "calls": calls})
-        except Exception as e:
-            st.session_state["chat_log"].append({"role": "assistant", "content": f"Error: {e}"})
-        st.rerun()
+@app.get("/brand.css")
+def brand_css():
+    return Response(brand.css(), media_type="text/css", headers={"Cache-Control": "no-cache"})
 
 
-def lake_view() -> None:
-    st.markdown(f"PDFs and raw OCR output live in S3 under `{S3_ROOT}`; everything else is an Iceberg table in `{DB}`, "
-                "queried through Impala and governed by SDX (Ranger policies, Atlas lineage).")
-    from ap.setup_lake import TABLES
-    counts = q(" UNION ALL ".join(f"SELECT '{t}' AS t, COUNT(*) AS n FROM {DB}.{t}" for t in TABLES))
-    n = dict(zip(counts["t"], counts["n"]))
-    st.dataframe(pd.DataFrame([
-        {"Table": f"{DB}.{t}", "Kind": "Enterprise data" if i < 5 else "Document AI", "Rows": n.get(t), "What it holds": c}
-        for i, (t, (c, _)) in enumerate(TABLES.items())
-    ]), hide_index=True, width="stretch")
-    with st.expander("Rules: extracted fields joined against enterprise data (ap/rules.sql)"):
-        st.code(Path("ap/rules.sql").read_text(), language="sql")
-    st.markdown("**Reset the demo**")
-    st.caption("Removes live uploads (files, documents, extractions) and reruns the rules, back to the batch state.")
-    if st.button("Remove live uploads"):
-        with st.spinner("Cleaning up…"):
-            removed = pipeline.reset_uploads()
-        refresh()
-        st.session_state.pop("ingested", None)
-        st.success(f"Removed {removed} uploaded document(s).")
+@app.get("/")
+def index():
+    if not (STATIC / "index.html").exists():
+        raise HTTPException(404, "static/index.html is missing.")
+    return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
 
 
-{"Action queue": action_queue, "Ingest an invoice": ingest_view, "Under the hood": under_the_hood}[view]()
+app.mount("/static", StaticFiles(directory=STATIC), name="static")

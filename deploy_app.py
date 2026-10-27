@@ -1,4 +1,4 @@
-"""Deploy the demo on Cloudera AI via the cmlapi v2 SDK: the Streamlit Application and the
+"""Deploy the demo on Cloudera AI via the cmlapi v2 SDK: the web Application and the
 "AP pipeline" Job (batch processing of invoices landed in S3).
 
 Run from a Cloudera AI session in this project: python deploy_app.py

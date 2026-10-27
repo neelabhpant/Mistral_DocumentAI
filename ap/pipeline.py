@@ -89,11 +89,11 @@ def extract(doc: dict, client) -> tuple[dict, list[dict]]:
     return raw, rows
 
 
-def process(docs: list[dict], workers: int = 4) -> list[dict]:
+def process(docs: list[dict], workers: int = 4, client=None) -> list[dict]:
     """OCR + extract a set of documents and write the results to the lake (one insert per table)."""
     if not docs:
         return []
-    client = get_client()
+    client = client or get_client()
     CACHE.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(workers) as pool:
         results = list(pool.map(lambda d: (d, *extract(d, client)), docs))
@@ -147,10 +147,10 @@ def land(data: bytes, file_name: str) -> str:
     return doc_id
 
 
-def ingest(data: bytes, file_name: str) -> str:
+def ingest(data: bytes, file_name: str, client=None) -> str:
     """Live path: land the PDF, process it, rerun the rules."""
     doc_id = land(data, file_name)
-    process(documents(f"doc_id = {lake.lit(doc_id)}"))
+    process(documents(f"doc_id = {lake.lit(doc_id)}"), client=client)
     run_rules()
     return doc_id
 

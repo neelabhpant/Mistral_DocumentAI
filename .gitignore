@@ -18,5 +18,3 @@ docs/Cloudera & Mistral 201 Use Case Outline Deck (1).pdf
 __pycache__/
 *.pyc
 .DS_Store
-
-.streamlit/machine_id_v4
