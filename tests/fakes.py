@@ -36,7 +36,7 @@ REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "data" / "ap"
 S3_ROOT = "s3a://test-lake/user/test/docai"
 PROJECT_KEY = "fake-project-key-0123456789"
-NO_KEY = ("No API key found: set MISTRAL_API_KEY as a Cloudera AI project environment variable "  # test_mistral_api's
+NO_KEY = ("No API key found: set MISTRAL_API_KEY as a Cloudera AI project environment variable "  # ap.ocr's
           "(Project Settings > Advanced; restart the app or session afterwards), or in .env when running locally")
 
 OVERRIDES: dict[str, dict[str, tuple]] = {}  # doc_id -> {field: (value read, or None for the true one; confidence)}
@@ -437,7 +437,7 @@ class FakeMistral:
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
     def _models(self):
-        from test_mistral_api import OCR_MODEL
+        from ap.ocr import OCR_MODEL
 
         self._authorize()
         ids = (OCR_MODEL, "mistral-ocr-latest", "mistral-medium-latest")
@@ -445,7 +445,7 @@ class FakeMistral:
 
 
 def get_client() -> FakeMistral:
-    """test_mistral_api.get_client, with the key from the environment only (never a local .env)."""
+    """ap.ocr.get_client, with the key from the environment only (never a local .env)."""
     key = (os.getenv("MISTRAL_API") or os.getenv("MISTRAL_API_KEY") or "").strip()
     if not key:
         sys.exit(NO_KEY)
@@ -489,15 +489,14 @@ def install(tmp_dir: Path, overrides: dict | None = None, project_key: bool = Tr
     impala = FakeImpala("docai_ap")
     lake.hdfs, lake.lit, lake._connection = FakeS3(TMP / "s3").hdfs, sqlite_lit, lambda: impala
 
-    import test_mistral_api
-    from ap import pipeline
+    from ap import ocr, pipeline
 
     import app
 
     pipeline.CACHE = TMP / "cache"
-    test_mistral_api.get_client = pipeline.get_client = app.get_client = get_client
+    ocr.get_client = pipeline.get_client = app.get_client = get_client
     app.Mistral = FakeMistral
-    app.load_dotenv = lambda *args, **kwargs: False  # the project key is what set_project_key says
+    ocr.load_dotenv = lambda *args, **kwargs: False  # the project key is what set_project_key says
     app.PDF = PDF  # one PyMuPDF lock for the app's page images and the fake OCR
     return app
 

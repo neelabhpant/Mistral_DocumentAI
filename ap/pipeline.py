@@ -18,9 +18,8 @@ from pathlib import Path
 from ap import lake
 from ap.config import AS_OF, DATA, DB, MIN_CONFIDENCE
 from ap.evidence import locate
+from ap.ocr import get_client, ocr_bytes
 from ap.schema import ANNOTATION_FORMAT, DATE_FIELDS, HEADER_FIELDS, INVOICE_PROMPT, LINE_FIELDS, MONEY_FIELDS
-from ocr_extract import ocr_bytes
-from test_mistral_api import get_client
 
 CACHE = DATA / "cache"
 RULES = Path(__file__).with_name("rules.sql")

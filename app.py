@@ -27,7 +27,6 @@ from functools import cache, lru_cache
 from pathlib import Path
 
 import pymupdf
-from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -41,10 +40,9 @@ from ap import architecture, brand, explain, lake, pipeline
 from ap.assistant import CHAT_MODEL, SUGGESTIONS, SYSTEM_PROMPT, ask, doc_for_chat, tool_spec
 from ap.config import AS_OF, DATA, DB, MIN_CONFIDENCE, ROOT, S3_ROOT
 from ap.evaluate import evaluate
+from ap.ocr import OCR_MODEL, api_key, get_client, page_markdown
 from ap.schema import ANNOTATION_FORMAT, HEADER_FIELDS, INVOICE_PROMPT
 from ap.setup_lake import TABLES
-from ocr_extract import page_markdown
-from test_mistral_api import OCR_MODEL, get_client
 
 PRICE_PER_PAGE = 4 / 1000  # USD, standard (non-batch) API pricing
 REVIEWER = os.getenv("HADOOP_USER_NAME") or os.getenv("USER") or "reviewer"
@@ -253,8 +251,7 @@ def mistral(key: str | None):
 
 def env_key() -> bool:
     """Whether the project has a Mistral key: the lookup get_client does (never the value)."""
-    load_dotenv(ROOT / ".env")
-    return bool((os.getenv("MISTRAL_API") or os.getenv("MISTRAL_API_KEY") or "").strip().strip("\"'"))
+    return bool(api_key())
 
 
 def scrub(text: str, key: str | None) -> str:

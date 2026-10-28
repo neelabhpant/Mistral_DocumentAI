@@ -4,7 +4,6 @@ token.txt
 
 # Synthetic data in data/ap ships with the repo (an AMP launch loads it); the pipeline's local cache does not
 data/ap/cache/
-outputs/
 
 # Internal material, not for the public repo
 docs/reference/

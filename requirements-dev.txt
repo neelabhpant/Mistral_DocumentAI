@@ -1,3 +1,0 @@
--r requirements.txt
-# FastAPI's TestClient needs httpx (mistralai 3.1 uses its own httpx2)
-httpx==0.28.1

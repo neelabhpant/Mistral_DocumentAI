@@ -43,6 +43,7 @@ an action with an audit trail.
 | `ap/setup_lake.py` | Creates the Iceberg tables in `docai_ap`, loads the enterprise data, lands the batch PDFs in S3 |
 | `ap/pipeline.py` | PDF in S3 → OCR 4.1 (schema mode) → `extractions` with page/bbox/confidence → rules. Batch CLI and the live `ingest()` path |
 | `ap/rules.sql` | The joins that produce `exceptions`: bank mismatch, duplicate, unknown vendor, no PO, price over PO, qty over receipt, low confidence, discount window |
+| `ap/ocr.py` | Mistral client (key from the project environment, or `.env` locally), the OCR 4.1 call and each page's markdown |
 | `ap/evidence.py` | Ties each extracted value to its OCR 4.1 block, line or table row, bounding box and word confidence |
 | `ap/evaluate.py` | Scores extraction and the action queue against the ground truth |
 | `app.py` | Web app: a FastAPI API over `ap/` (action queue, evidence, review, ingest, chat, tables, accuracy) that also serves the front end |
@@ -117,7 +118,7 @@ The tests run the real app and `ap/` code on stand-ins for Impala (SQLite), S3 (
 API (`tests/fakes.py`), so they need neither Cloudera nor a Mistral key:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt httpx            # FastAPI's TestClient needs httpx
 python -m unittest discover -s tests -t . -v   # API, pipeline and rules
 node --test                                    # the front end's markdown renderer
 ```
