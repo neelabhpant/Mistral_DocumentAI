@@ -1,5 +1,5 @@
-"""Cloudera + Mistral AI look and feel: one palette, the page header, and the CSS. Theme colors and fonts that
-Streamlit applies itself are in .streamlit/config.toml and must agree with the values here.
+"""Cloudera + Mistral AI look and feel: one palette. The web app gets it as CSS custom properties from css() (served
+at /brand.css), and the architecture diagram uses the constants.
 
 Both brands are orange, so orange is the partnership accent. Cloudera's logo orange (#FF550D, sampled from the
 official logo) and Mistral's orange (#FA500F, mistral.ai/brand) are nearly identical. Navy (Cloudera, the
@@ -12,12 +12,15 @@ MISTRAL_ORANGE = "#FA500F"  # mistral.ai/brand
 MISTRAL_INK = "#151524"  # the Mistral wordmark color
 RAINBOW = ["#E10500", "#FA500F", "#FF8205", "#FFAF00", "#FFD800"]  # mistral.ai/brand, red to yellow
 
-ACCENT = "#D63F06"  # interactive orange: one shade deeper so white text on it passes WCAG AA
-BG = "#FFFCF5"
-BEIGE = "#FFF4DC"
+ACCENT = "#D63F06"  # interactive orange: one shade deeper so white text on it passes WCAG AA (4.6:1)
+BG = "#FFFCF5"  # warm off-white
+BEIGE = "#FFF4DC"  # Mistral beige
 INK = "#1A1A1A"
 MUTED = "#5F6B76"
 LINE = "#E9E1CF"
+LINK = "#C2410C"
+TABLE_LINE = "#EFE8D8"
+CODE_BG = "#FBF6EA"
 
 # Status colors stay clear of the brand orange so "at risk" never looks like decoration.
 TONE = {"risk": "#C8102E", "review": "#E59400", "opportunity": "#17784E"}
@@ -37,83 +40,28 @@ BLOCK_COLORS = {
     "caption": "#5B46B8",
 }
 
-LOGOS = "app/static/logos"  # served by Streamlit static serving, relative to the app URL
-CLOUDERA_LOGO = f"{LOGOS}/cloudera-new-logo.png"
-MISTRAL_LOGO = f"{LOGOS}/Mistral-Lockup-Gradient-RGB.png"
-MISTRAL_LOGO_DARK = f"{LOGOS}/Mistral-Lockup-Gradient-inverted-RGB.png"
-MISTRAL_ICON = "static/logos/Mistral-Icon-Gradient-RGB.png"  # file path, for set_page_config
-
-CSS = f"""<style>
-/* header band */
-.brandbar {{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  padding:2px 0 10px}}
-.brandbar .lockup {{display:flex;align-items:center;gap:14px}}
-.brandbar .lockup img.cl {{height:19px}}
-.brandbar .lockup img.mi {{height:26px}}
-.brandbar .lockup .x {{color:{MUTED};font-size:1.1rem;font-weight:300}}
-.brandbar .ctx {{color:{MUTED};font-size:0.8rem;letter-spacing:0.06em;text-transform:uppercase;font-weight:600}}
-.rainbow {{height:4px;border-radius:2px;margin:0 0 18px;
-  background:linear-gradient(90deg,{",".join(RAINBOW)})}}
-.pagetitle {{font-size:2.1rem;font-weight:700;letter-spacing:-0.02em;color:{INK};margin:0 0 2px;line-height:1.2}}
-.pagesub {{color:{MUTED};font-size:1rem;margin:0 0 18px}}
-
-/* Read / Join / Act strip */
-.step {{background:#FFFFFF;border:1px solid {LINE};border-radius:10px;padding:12px 14px;min-height:128px}}
-.step .num {{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;
-  background:{MISTRAL_ORANGE};color:{MISTRAL_INK};font-weight:700;font-size:0.8rem;margin-right:8px}}
-.step b {{font-size:0.98rem}}
-.step .by {{color:{MUTED};font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-left:6px}}
-.step p {{color:{MUTED};font-size:0.86rem;margin:6px 0 0}}
-
-/* metric tiles */
-[data-testid="stMetric"] {{background:#FFFFFF;border:1px solid {LINE};border-top:3px solid {MISTRAL_ORANGE};
-  border-radius:10px;padding:10px 14px}}
-[data-testid="stMetricValue"] {{font-weight:700;letter-spacing:-0.01em}}
-
-/* tags, legend chips, low-confidence words */
-.tag {{display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.8rem;font-weight:700}}
-.chip {{display:inline-flex;align-items:center;gap:6px;margin:0 14px 4px 0;font-size:0.85rem;color:{MUTED}}}
-.chip span.sw {{width:12px;height:12px;border-radius:3px;display:inline-block}}
-mark.lowconf {{background:#FFE7B8;border-bottom:2px solid {TONE["review"]};padding:0 1px;border-radius:2px}}
-
-/* sidebar */
-.sidebrand {{display:flex;flex-direction:column;gap:10px;padding:2px 0 6px}}
-.sidebrand img.mi {{height:24px;width:auto;align-self:flex-start}}
-.sidebrand img.cl {{height:15px;width:auto;align-self:flex-start}}
-.sidebrand .app {{font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;margin-top:6px}}
-.sidebrand .sub {{font-size:0.82rem;opacity:0.75}}
-.sidebrand .rainbow {{margin:4px 0 0}}
-.legal {{font-size:0.72rem;opacity:0.6;margin-top:18px}}
-</style>"""
+# The navy sidebar.
+SIDEBAR = {
+    "bg": CLOUDERA_NAVY,
+    "bg-2": "#14304D",
+    "ink": "#F4F1EA",
+    "accent": "#FF8205",  # Mistral orange light: 6.7:1 on navy
+    "line": "#24415F",
+    "code-ink": "#FFD7B0",
+    "link": "#FFAF01",
+}
 
 
-def header(title: str, subtitle: str = "") -> str:
-    """Partner lockup on the light page, the Mistral rainbow rule, then the view title."""
-    sub = f"<div class='pagesub'>{subtitle}</div>" if subtitle else ""
-    return (
-        "<div class='brandbar'><div class='lockup'>"
-        f"<img class='cl' src='{CLOUDERA_LOGO}' alt='Cloudera'><span class='x'>×</span>"
-        f"<img class='mi' src='{MISTRAL_LOGO}' alt='Mistral AI'></div>"
-        "<div class='ctx'>Document AI · Accounts payable</div></div>"
-        f"<div class='rainbow'></div><div class='pagetitle'>{title}</div>{sub}"
-    )
-
-
-def sidebar() -> str:
-    """Navy sidebar: Mistral's inverted lockup (its rule for dark backgrounds) and Cloudera's orange logo."""
-    return (
-        "<div class='sidebrand'>"
-        f"<img class='mi' src='{MISTRAL_LOGO_DARK}' alt='Mistral AI'>"
-        f"<img class='cl' src='{CLOUDERA_LOGO}' alt='Cloudera'>"
-        "<div class='rainbow'></div>"
-        "<div class='app'>Document AI</div><div class='sub'>Accounts payable · read, join, act</div></div>"
-    )
-
-
-def step(n: int, title: str, by: str, text: str) -> str:
-    return f"<div class='step'><span class='num'>{n}</span><b>{title}</b><span class='by'>{by}</span><p>{text}</p></div>"
-
-
-def tag(label: str, tone: str) -> str:
-    return f"<span class='tag' style='background:{TONE[tone]};color:{TONE_TEXT[tone]}'>{label}</span>"
-
+def css() -> str:
+    """The palette as CSS custom properties on :root, the front end's only source of brand colors."""
+    props = {
+        "cloudera-orange": CLOUDERA_ORANGE, "cloudera-navy": CLOUDERA_NAVY, "mistral-orange": MISTRAL_ORANGE,
+        "mistral-ink": MISTRAL_INK, "accent": ACCENT, "bg": BG, "beige": BEIGE, "ink": INK, "muted": MUTED,
+        "line": LINE, "link": LINK, "table-line": TABLE_LINE, "code-bg": CODE_BG, "evidence": EVIDENCE, "gray": GRAY,
+        "rainbow": f"linear-gradient(90deg, {', '.join(RAINBOW)})",
+        **{f"tone-{tone}": color for tone, color in TONE.items()},
+        **{f"tone-{tone}-text": color for tone, color in TONE_TEXT.items()},
+        **{f"block-{kind}": color for kind, color in BLOCK_COLORS.items()},
+        **{f"side-{name}": color for name, color in SIDEBAR.items()},
+    }
+    return ":root {\n" + "".join(f"  --{name}: {value};\n" for name, value in props.items()) + "}\n"

@@ -3,7 +3,7 @@ description: >-
   Supplier invoices land as PDFs in the governed data lake. Mistral OCR 4.1 reads them (schema-mode fields, layout
   blocks with bounding boxes, word confidence), every field lands in Iceberg, and SQL rules in Impala join it against
   the vendor master, purchase orders, goods receipts and payments. The result is a prioritized action queue in a
-  Streamlit app, where each action links back to the exact spot on the page. Ships with synthetic AP data
+  web app, where each action links back to the exact spot on the page. Ships with synthetic AP data
   (40 batch invoices with planted issues, plus held-back samples for live ingest).
 author: Neelabh Pant
 specification_version: 1.0
@@ -75,4 +75,4 @@ tasks:
     kernel: python3
     cpu: 1
     memory: 4
-    short_summary: Start the Streamlit application
+    short_summary: Start the web application

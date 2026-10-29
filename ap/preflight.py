@@ -37,7 +37,7 @@ def _python() -> str:
 
 
 def _mistral() -> str:
-    from test_mistral_api import OCR_MODEL, get_client
+    from ap.ocr import OCR_MODEL, get_client
 
     try:
         client = get_client()
