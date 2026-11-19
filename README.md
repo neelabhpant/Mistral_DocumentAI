@@ -1,4 +1,12 @@
 # Document AI on Cloudera: accounts payable with Mistral OCR 4.1
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](requirements.txt)
+[![Cloudera Blueprint](https://img.shields.io/badge/Cloudera-Blueprint-f96702.svg)](.project-metadata.yaml)
+[![Mistral OCR](https://img.shields.io/badge/Mistral-OCR%204.1-fa520f.svg)](https://docs.mistral.ai/capabilities/document_ai/basic_ocr)
+[![Stars](https://img.shields.io/github/stars/neelabhpant/Mistral_DocumentAI?logo=github)](https://github.com/neelabhpant/Mistral_DocumentAI/stargazers)
+[![Forks](https://img.shields.io/github/forks/neelabhpant/Mistral_DocumentAI?logo=github)](https://github.com/neelabhpant/Mistral_DocumentAI/network/members)
+[![Watchers](https://img.shields.io/github/watchers/neelabhpant/Mistral_DocumentAI?logo=github)](https://github.com/neelabhpant/Mistral_DocumentAI/watchers)
+
 
 ## Reference architecture
 
