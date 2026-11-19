@@ -122,3 +122,10 @@ pip install -r requirements.txt httpx            # FastAPI's TestClient needs ht
 python -m unittest discover -s tests -t . -v   # API, pipeline and rules
 node --test                                    # the front end's markdown renderer
 ```
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
+
+## Disclaimer
+
+*This blueprint is intended for Proof-of-Concept and research use only. It is not designed for production deployment. Use in production environments is at the user's own risk. The authors and contributors accept no liability for operational impacts or damages.*
